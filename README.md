@@ -1,3 +1,3 @@
 # SymmState
 
-The python package dedicated to understanding symmetry and its application in condensed matter physics. 
+Unlocking the elegance of symmetry in the solid state 
