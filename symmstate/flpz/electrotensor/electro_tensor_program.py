@@ -1,8 +1,8 @@
-from symmstate import FlpzCore
+from symmstate.flpz import FlpzCore
 from symmstate.abinit import *
 
 
-class PerturbationsProgram(FlpzCore):
+class ElectroTensorProgram(FlpzCore):
     """
     Energy subclass inheriting from flpz.
     """
