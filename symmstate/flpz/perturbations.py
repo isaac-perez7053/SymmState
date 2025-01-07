@@ -144,6 +144,7 @@ class Perturbations(FlpzCore):
             # Append most recent job to my array
             self.abinit_file.running_jobs.append(perturbation_object.running_jobs[-1])
 
+            # Extract energy and piezoelectric properties 
             self.abinit_file.wait_for_jobs_to_finish(check_time=300)
             for perturbation_object in self.perturbed_objects:
                 perturbation_object.grab_piezo_tensor()
