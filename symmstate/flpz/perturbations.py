@@ -114,13 +114,17 @@ class Perturbations(FlpzCore):
         for i, perturbation_object in enumerate(self.perturbed_objects):
 
             # Change file name for sorting when running energy_calculation batch
-            perturbation_object.file_name = f"{perturbation_object.file_name}_{i}"
+            perturbation_object.file_name = FlpzCore._get_unique_filename(
+                f"{perturbation_object.file_name}_{i}"
+            )
+            perturbation_object.file_name = os.path.basename(perturbation_object.file_name)
+
+            # Run energy calculation and save file name 
             perturbation_object.run_energy_calculation(host_spec=self.host_spec)
             self.list_abi_files.append(f"{perturbation_object.file_name}.abi")
 
             # Append most recent job to my array
-            most_recent_job = perturbation_object.running_jobs[-1]
-            self.abinit_file.running_jobs.append(most_recent_job)
+            self.abinit_file.running_jobs.append(perturbation_object.running_jobs[-1])
 
         # Extract energy information
         self.abinit_file.wait_for_jobs_to_finish(check_time=90)
@@ -138,8 +142,11 @@ class Perturbations(FlpzCore):
             perturbation_object.file_name = FlpzCore._get_unique_filename(
                 f"{perturbation_object.file_name}_{i}"
             )
-            perturbation_object.run_piezo_calculation()
-            self.list_abi_files.append(perturbation_object.file_name)
+            perturbation_object.file_name = os.path.basename(perturbation_object.file_name)
+
+            # Run piezo calculation and save file name 
+            perturbation_object.run_piezo_calculation(host_spec=self.host_spec)
+            self.list_abi_files.append(f"{perturbation_object.file_name}.abi")
 
             # Append most recent job to my array
             self.abinit_file.running_jobs.append(perturbation_object.running_jobs[-1])
@@ -147,6 +154,7 @@ class Perturbations(FlpzCore):
             # Extract energy and piezoelectric properties 
             self.abinit_file.wait_for_jobs_to_finish(check_time=300)
             for perturbation_object in self.perturbed_objects:
+                perturbation_object.grab_cartesian_coordinates()
                 perturbation_object.grab_piezo_tensor()
                 self.list_energies.append(perturbation_object.energy)
                 self.list_piezo_tensors_clamped.append(
@@ -162,9 +170,14 @@ class Perturbations(FlpzCore):
         """
         for i, perturbation_object in enumerate(self.perturbed_objects):
 
-            # Change file name for sorting when running flexo_calculation batch
-            perturbation_object.file_name = f"{perturbation_object.file_name}_{i}"
-            perturbation_object.run_flexo_calculation()
+            # Change the file name for sorting when running flexo_calculation batch
+            perturbation_object.file_name = FlpzCore._get_unique_filename(
+                f"{perturbation_object.file_name}_{i}"
+            )
+            perturbation_object.file_name = os.path.basename(perturbation_object.file_name)
+
+            # Run flexoelectricity calculation
+            perturbation_object.run_flexo_calculation(host_spec=self.host_spec)
             self.list_abi_files.append(f"{perturbation_object.file_name}.abi")
 
             # Append most recent job to my array
@@ -172,6 +185,7 @@ class Perturbations(FlpzCore):
 
         self.abinit_file.wait_for_jobs_to_finish(check_time=600)
         for perturbation_object in self.perturbed_objects:
+            perturbation_object.grab_energy()
             perturbation_object.grab_flexo_tensor()
             perturbation_object.grab_piezo_tensor()
             self.list_energies.append(perturbation_object.energy)
@@ -249,9 +263,9 @@ class Perturbations(FlpzCore):
                 )
 
             # Customize the plot
-            ax.set_xlabel(r"$x$ (bohrs)", fontsize=14)
+            ax.set_xlabel("x (bohrs)", fontsize=14)
             ax.set_ylabel(r"$\mu_{i,j} \left(\frac{nC}{m}\right)$", fontsize=14)
-            ax.set_title("Selected $\mu$ Components vs. $x$", fontsize=16)
+            ax.set_title("Flexoelectric Tensor Components vs. Amplitude of Displacement", fontsize=16)
 
             # Set axis limits as requested
             ax.set_xlim(0, self.max_amp)
@@ -262,7 +276,16 @@ class Perturbations(FlpzCore):
             ax.legend(loc="best", fontsize=12)
             ax.tick_params(axis="both", which="major", labelsize=14)
 
-            plt.tight_layout()
+
+            # Adjust layout
+            plt.tight_layout(pad=0.5)
+
+            # Save the plot if required
+            if save_plot:
+                plt.savefig(f"{filename}_relaxed", bbox_inches="tight")
+                print(f"Plot saved as {filename} in {os.getcwd()}")
+
+            # Show the plot
             plt.show()
 
         elif piezo:
@@ -287,14 +310,14 @@ class Perturbations(FlpzCore):
                     )
 
             # Prepare data for plotting
-            plot_data = np.zeros(
+            plot_data_clamped = np.zeros(
                 (len(self.list_piezo_tensors_clamped), len(selected_indices))
             )
             for idx, tensor in enumerate(self.list_piezo_tensors_clamped):
                 flat_tensor = (
                     tensor.flatten()
                 )  # Flatten the tensor from left to right, top to bottom
-                plot_data[idx, :] = flat_tensor[selected_indices]
+                plot_data_clamped[idx, :] = flat_tensor[selected_indices]
 
             # Create the plot
             fig, ax = plt.subplots(figsize=(8, 6))
@@ -302,7 +325,7 @@ class Perturbations(FlpzCore):
             for i in range(len(selected_indices)):
                 ax.plot(
                     self.list_amps,
-                    plot_data[:, i],
+                    plot_data_clamped[:, i],
                     linestyle=":",
                     marker="o",
                     markersize=8,
@@ -311,21 +334,89 @@ class Perturbations(FlpzCore):
                 )
 
                 # Customize the plot
-            ax.set_xlabel(r"$x$ (bohrs)", fontsize=14)
+            ax.set_xlabel("x (bohrs)", fontsize=14)
             ax.set_ylabel(r"$\mu_{i,j} \left(\frac{nC}{m}\right)$", fontsize=14)
-            ax.set_title("Selected $\mu$ Components vs. $x$", fontsize=16)
+            ax.set_title("Piezoelectric Tensor Components (Clamped) vs. Amplitude of Displacement", fontsize=16)
 
             # Set axis limits as requested
             ax.set_xlim(0, self.max_amp)
-            ax.set_ylim(0, np.max(plot_data))
+            ax.set_ylim(0, np.max(plot_data_clamped))
 
             # Add grid, legend, and adjust layout
             ax.grid(True)
             ax.legend(loc="best", fontsize=12)
             ax.tick_params(axis="both", which="major", labelsize=14)
 
-            plt.tight_layout()
+            # Adjust layout
+            plt.tight_layout(pad=0.5)
+
+            # Save the plot if required
+
+            filename_based = os.path.basename(filename)
+            filename = f"{filename_based}_clamped.png"
+
+            if save_plot:
+                plt.savefig(f"{filename}_relaxed", bbox_inches="tight")
+                print(f"Plot saved as {filename} in {os.getcwd()}")
+
+            # Show the plot
             plt.show()
+
+            if plot_piezo_relaxed_tensor:
+
+                # Prepare data for plotting
+                plot_data_relaxed = np.zeros(
+                    (len(self.list_piezo_tensors_relaxed), len(selected_indices))
+                )
+                for idx, tensor in enumerate(self.list_piezo_tensors_relaxed):
+                    flat_tensor = (
+                        tensor.flatten()
+                    )  # Flatten the tensor from left to right, top to bottom
+                    plot_data_relaxed[idx, :] = flat_tensor[selected_indices]
+
+                # Create the plot
+                fig, ax = plt.subplots(figsize=(8, 6))
+
+                for i in range(len(selected_indices)):
+                    ax.plot(
+                        self.list_amps,
+                        plot_data_relaxed[:, i],
+                        linestyle=":",
+                        marker="o",
+                        markersize=8,
+                        linewidth=1.5,
+                        label=f"μ_{selected_indices[i] + 1}",
+                    )
+
+                    # Customize the plot
+                ax.set_xlabel("x (bohrs)", fontsize=14)
+                ax.set_ylabel(r"$\mu_{i,j} \left(\frac{nC}{m}\right)$", fontsize=14)
+                ax.set_title("Piezoelectric Tensor Components (Relaxed) vs. Amplitude of Displacement", fontsize=16)
+
+                # Set axis limits as requested
+                ax.set_xlim(0, self.max_amp)
+                ax.set_ylim(0, np.max(plot_data_relaxed))
+
+                # Add grid, legend, and adjust layout
+                ax.grid(True)
+                ax.legend(loc="best", fontsize=12)
+                ax.tick_params(axis="both", which="major", labelsize=14)
+
+                # Adjust layout
+                plt.tight_layout(pad=0.5)
+
+                # Save the plot if required
+
+                filename_based = os.path.basename(filename)
+                filename = f"{filename_based}_relaxed.png"
+
+                if save_plot:
+                    plt.savefig(f"{filename}_relaxed", bbox_inches="tight")
+                    print(f"Plot saved as {filename} in {os.getcwd()}")
+
+                # Show the plot
+                plt.show()
+
 
         else:
 
@@ -334,39 +425,39 @@ class Perturbations(FlpzCore):
                     "The length of list_energies and list_amps must be the same."
                 )
 
-        # Create the figure and axis
-        fig, ax = plt.subplots()
+            # Create the figure and axis
+            fig, ax = plt.subplots()
 
-        # Plot the points with lines
-        ax.plot(
-            self.list_amps, self.list_energies, marker="o", linestyle="-", color="b"
-        )
+            # Plot the points with lines
+            ax.plot(
+                self.list_amps, self.list_energies, marker="o", linestyle="-", color="b"
+            )
 
-        # Set title and labels
-        ax.set_title("Energy vs Amplitude of Perturbations")
-        ax.set_xlabel("Amplitude")
-        ax.set_ylabel("Energy")
+            # Set title and labels
+            ax.set_title("Energy vs Amplitude of Perturbations")
+            ax.set_xlabel("Amplitude")
+            ax.set_ylabel("Energy")
 
-        # Set axis limits using self.min and self.max for the x-axis
-        x_margin = 0.1 * (
-            self.max_amp - self.min_amp
-        )  # Add margin for better visualization
-        y_margin = 0.1 * (max(self.list_energies) - min(self.list_energies))
-        ax.set_xlim(self.min_amp - x_margin, self.max_amp + x_margin)
-        ax.set_ylim(
-            min(self.list_energies) - y_margin, max(self.list_energies) + y_margin
-        )
+            # Set axis limits using self.min and self.max for the x-axis
+            x_margin = 0.1 * (
+                self.max_amp - self.min_amp
+            )  # Add margin for better visualization
+            y_margin = 0.1 * (max(self.list_energies) - min(self.list_energies))
+            ax.set_xlim(self.min_amp - x_margin, self.max_amp + x_margin)
+            ax.set_ylim(
+                min(self.list_energies) - y_margin, max(self.list_energies) + y_margin
+            )
 
-        # Enable grid
-        ax.grid(True)
+            # Enable grid
+            ax.grid(True)
 
-        # Adjust layout
-        plt.tight_layout(pad=0.5)
+            # Adjust layout
+            plt.tight_layout(pad=0.5)
 
-        # Save the plot if required
-        if save_plot:
-            plt.savefig(filename, bbox_inches="tight")
-            print(f"Plot saved as {filename} in {os.getcwd()}")
+            # Save the plot if required
+            if save_plot:
+                plt.savefig(filename, bbox_inches="tight")
+                print(f"Plot saved as {filename} in {os.getcwd()}")
 
-        # Show the plot
-        plt.show()
+            # Show the plot
+            plt.show()
