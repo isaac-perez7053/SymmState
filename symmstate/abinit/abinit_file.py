@@ -117,18 +117,18 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                 outf.write(f"{self.conv_criteria[0]} {str(self.conv_criteria[1])} \n")
 
                 # Calculate the path to the pp directory
-                package_path, package_path_rel = SlurmFile.find_package_path(
-                    package_name="symmstate_program"
+                package_path_rel = SlurmFile.upload_files_to_package(
+                    dest_folder_name='pseudopotentials'
                 )
 
                 # Check to make sure package was found and print relative path
-                if not package_path:
+                if not package_path_rel:
                     raise FileNotFoundError(
                         "Package path was not found! This is likely an issue if it wasn't installed using pip"
                     )
                 else:
                     outf.write(
-                        f'\npp_dirpath "{package_path_rel}/symmstate/pseudopotentials" \n'
+                        f'\npp_dirpath "{package_path_rel}p" \n'
                     )
 
                 concatenated_pseudos = " ".join(self.pseudopotentials)

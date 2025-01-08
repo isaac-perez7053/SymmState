@@ -1,68 +1,118 @@
 import sys
 import argparse
 import os
-from pathlib import Path
 import importlib.util
+import shutil
 
 
 class SymmStateCore:
     """
-    Main class for FLPZ package to study flexo and piezoelectricity.
+    Main class for symmstate package to study flexo and piezoelectricity.
     """
 
     def __init__(self):
         pass
 
-    def find_package_path(package_name="flpz"):
-        """Calculates the path to the specified package."""
-
-        current_directory = os.getcwd()
+    @staticmethod
+    def find_package_path_system(package_name="symmstate"):
+        """
+        Finds the on-disk path of the installed package (using importlib)
+        and returns both the absolute and relative paths from the current
+        working directory.
+        """
+        # 1. Find the module spec for the package
         spec = importlib.util.find_spec(package_name)
+        if spec is None:
+            raise ModuleNotFoundError(f"Cannot find module named '{package_name}'")
 
-        if spec and spec.submodule_search_locations:
-            # The first entry in submodule_search_locations is typically the package path
-            rel_path_to_package = os.path.relpath(spec, current_directory)
-            return spec.submodule_search_locations[0], rel_path_to_package
-        else:
-            print("Package not found")
+        # 2. The 'origin' attribute points to the "main" file for that package
+        package_file = spec.origin
+        if not package_file:
+            raise ModuleNotFoundError(
+                f"Cannot find the file for module '{package_name}'"
+            )
 
+        # 3. Get the directory containing __init__.py (or the main .py file)
+        package_dir = os.path.dirname(package_file)
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="FLPZ: A tool to study flexo and piezoelectricity"
-    )
-    parser.add_argument(
-        "inputs",
-        nargs="*",
-        help="Program type (energy, pert, couple) followed by their necessary arguments",
-    )
+        # 4. Compute the relative path from the current working directory
+        current_directory = os.getcwd()
+        rel_path_to_package = os.path.relpath(package_dir, current_directory)
 
-    args = parser.parse_args()
-    inputs = args.inputs
+        return package_dir, rel_path_to_package
+    
+    @staticmethod
+    def find_package_path(package_name='symmstate'):
+        """Finds and returns the package path using importlib."""
+        spec = importlib.util.find_spec(package_name)
+        if spec is None:
+            raise ImportError(f"Cannot find package {package_name}")
+        return spec.submodule_search_locations[0]
 
-    # Validate inputs
-    if len(inputs) == 0:
-        print("Error: No program type was specified.")
-        sys.exit(1)
+    @staticmethod
+    def upload_files_to_package(*files, dest_folder_name):
+        """Uploads files to a specified directory within a package from a single input string."""
 
-    program_type = inputs[0]
-    additional_args = inputs[1:]  # The remaining arguments
+        # Find the package path and create target directory path
+        package_path = SymmStateCore.find_package_path('symmstate')
+        target_path = os.path.join(package_path, dest_folder_name)
 
-    # Instantiate FLPZ class
-    flpz_instance = SymmStateCore()
+        # Ensure target directory exists
+        os.makedirs(target_path, exist_ok=True)
 
-    # Dispatch the appropriate method based on program type
-    if program_type == "energy":
-        flpz_instance.energy(*additional_args)
-    elif program_type == "pert":
-        flpz_instance.perturbations(*additional_args)
-    elif program_type == "couple":
-        flpz_instance.coupling(*additional_args)
-    else:
-        print(
-            f"Error: Invalid program type '{program_type}'. Available options are: energy, pert, couple."
-        )
+        # Calculate and print relative path
+        current_path = os.getcwd()
+        relative_path = os.path.relpath(target_path, current_path)
 
 
-if __name__ == "__main__":
-    main()
+        # Copy files to target directory
+        for file in files:
+
+            print(f"Uploading file: {file}")
+            if os.path.isfile(file):
+                shutil.copy(file, target_path)
+                print(f"Uploaded {file} to {target_path}")
+            else:
+                print(f"File {file} does not exist.")
+
+            # Check to see if the file is already in the directory
+            if os.path.exists(relative_path):
+                print(f"{file} already exists in {dest_folder_name}")
+            else: 
+                # Copy file into directory
+                try:
+                    shutil.copy(file, relative_path)
+                    print(f"Copied: {file} to {dest_folder_name}")
+                
+                # CHeck to see if the copy failed
+                except Exception as e:
+                    print(f"Failed to copy {file}: {e} \n")
+
+        print(f"Relative Path: {relative_path}")
+        return relative_path
+
+    @staticmethod
+    def _get_unique_filename(base_name, directory="."):
+        """"""
+        # Get the full path for the base file
+        full_path = os.path.join(directory, base_name)
+
+        # If the file does not exist, return the base name
+        if not os.path.isfile(full_path):
+            return base_name
+
+        # Otherwise, start creating new filenames with incrementing numbers
+        counter = 1
+        while True:
+            # Format the new filename with leading zeros
+            new_name = f"{os.path.splitext(base_name)[0]}_{counter:03}{os.path.splitext(base_name)[1]}"
+            new_full_path = os.path.join(directory, new_name)
+
+            # Check if the new filename is available
+            if not os.path.isfile(new_full_path):
+                return new_name
+
+            # Increment the counter
+            counter += 1
+
+

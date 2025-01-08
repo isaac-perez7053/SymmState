@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -62,7 +61,7 @@ class SmodesProcessor(FlpzCore):
         smodes_input=None,
         target_irrep=None,
         smodes_path="../isobyu/smodes",
-        host_spec="mpirun -hosts=localhost -np 30",
+        host_spec="mpirun -hosts=localhost -np 10",
         disp_mag=0.001,
         symm_prec=1e-5,
         b_script_header_file=None,
@@ -86,25 +85,26 @@ class SmodesProcessor(FlpzCore):
             smodes_input=smodes_input,
             target_irrep=target_irrep,
             batch_script_header_file=b_script_header_file,
-            symmetry_informed_basis=True
+            symmetry_informed_basis=True,
         )
-        (
-            self.transmodes,
-            self.isir,
-            self.israman,
-            self.type_count,
-            self.type_list,
-            self.num_sam,
-            self.mass_list,
-            self.pos_mat_cart,
-            self.dist_mat,
-            self.sam_atom_label,
-        ) = AbinitFile._symmatry_adapted_basis(
+        _, smodes_output = AbinitFile._symmatry_adapted_basis(
             smodes_file=smodes_input,
             target_irrep=target_irrep,
             symm_prec=symm_prec,
-            smodes_path=smodes_path
+            smodes_path=smodes_path,
         )
+
+        self.transmodes = smodes_output[0]
+        self.isir = smodes_output[1]
+        self.israman = smodes_output[2]
+        self.type_count = smodes_output[3]
+        self.type_list = smodes_output[4]
+        self.num_sam = smodes_output[5]
+        self.mass_list = smodes_output[6]
+        self.pos_mat_cart = smodes_output[7]
+        self.dist_mat = smodes_output[8]
+        self.sam_atom_label = smodes_output[9]
+
         self.smodes_path = smodes_path
 
         self.disp_mag = disp_mag
@@ -135,15 +135,17 @@ chkprim 0
 """
         original_coords = self.abinit_file.coordinates_xred.copy()
         abi_name = "dist_0"
+        batch_name = "dist_0_sbatch"
         self.abinit_file.write_custom_abifile(
             abi_name, content, coords_are_cartesian=False
         )
         self.abinit_file.run_abinit(
             input_file=abi_name,
-            batch_name="dist_0_sbatch",
-            batch_script_header_file=self.abinit_file.batch_header,
+            batch_name=batch_name,
+            batch_script_header_file=self.abinit_file.sbatch_header,
             host_spec=self.host_spec,
             log="dist_0.log",
+            delete_batch_script=False,
         )
         self.jobs_ran_abo.append(f"dist_0.abo")
 
@@ -157,7 +159,7 @@ chkprim 0
                 + (1.88973 * self.disp_mag * self.dist_mat[i])
             )
             self.abinit_file.change_coordinates(
-                new_coordinates=perturbation, cartesian=True
+                new_coordinates=perturbation, coords_are_cartesian=True
             )
             abi_name = f"dist_{j}"
             batch_name = f"dist_{j}_sbatch"
@@ -172,6 +174,7 @@ chkprim 0
                 batch_script_header_file=self.abinit_file.sbatch_header,
                 host_spec=self.host_spec,
                 log=f"dist_{j}.log",
+                delete_batch_script=False,
             )
 
             # Change coordinates back to their original value

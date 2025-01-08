@@ -692,42 +692,10 @@ class UnitCell(SymmStateCore):
         - *files: A variable number of file paths to be moved.
         - dest_folder_name (str): Destination folder name where files will be moved. Default is 'pseudopotentials'.
         """
-        # Calculate the absolute path to the destination folder within the current directory
-        _, package_path_rel = self.find_package_path(package_name="symmstate_program")
-        dest_folder = os.path.join(package_path_rel, dest_folder_name)
+        relative_path =  SymmStateCore.upload_files_to_package(*files, dest_folder_name=dest_folder_name)
+        return relative_path
+    
 
-        # Ensure the destination directory exists
-        if not os.path.exists(dest_folder):
-            os.makedirs(dest_folder)
-            warnings.warn(
-                "Pseudopotentials directory did not exist, making directory..."
-            )
-
-        # Check to ensure that the file exists
-        for file_path in files:
-
-            # Debug statement to check types and values
-            print(f"Uploading pseudopotential: {file_path}")
-            if not os.path.isfile(file_path):
-                print(f"File not found: {file_path} \n")
-                continue
-
-            filename = os.path.basename(file_path)
-            dest_file_path = os.path.join(dest_folder, filename)
-
-            # Check to see if the file is already in the directory
-            if os.path.exists(dest_file_path):
-                print(f"{filename} already exists in {dest_folder}\n")
-
-            else:
-                # Copy file into directory
-                try:
-                    shutil.copy(file_path, dest_file_path)
-                    print(f"Copied: {filename} to {dest_folder} \n")
-
-                # Check to see if the copy failed
-                except Exception as e:
-                    print(f"Failed to copy {filename}: {e} \n")
 
     def __repr__(self):
         """

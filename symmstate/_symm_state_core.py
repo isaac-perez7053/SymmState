@@ -2,6 +2,7 @@ import sys
 import argparse
 import os
 import importlib.util
+import shutil
 
 
 class SymmStateCore:
@@ -39,32 +40,56 @@ class SymmStateCore:
         rel_path_to_package = os.path.relpath(package_dir, current_directory)
 
         return package_dir, rel_path_to_package
+    
+    @staticmethod
+    def find_package_path(package_name='symmstate'):
+        """Finds and returns the package path using importlib."""
+        spec = importlib.util.find_spec(package_name)
+        if spec is None:
+            raise ImportError(f"Cannot find package {package_name}")
+        return spec.submodule_search_locations[0]
 
     @staticmethod
-    def find_package_path(package_name="symmstate_program"):
-        """
-        Walks upward from the current working directory until it finds a
-        directory named `package_name`. Returns the absolute path to that
-        directory and the relative path from the current dir.
-        """
-        current_directory = os.getcwd()
+    def upload_files_to_package(*files, dest_folder_name):
+        """Uploads files to a specified directory within a package from a single input string."""
 
-        # Start from the current directory and walk upwards
-        directory = current_directory
-        while True:
-            candidate = os.path.join(directory, package_name)
-            if os.path.isdir(candidate):
-                abs_path = os.path.abspath(candidate)
-                rel_path = os.path.relpath(abs_path, current_directory)
-                return abs_path, rel_path
+        # Find the package path and create target directory path
+        package_path = SymmStateCore.find_package_path('symmstate')
+        target_path = os.path.join(package_path, dest_folder_name)
 
-            parent = os.path.dirname(directory)
-            # If we have reached the top and still haven't found it:
-            if parent == directory:
-                raise FileNotFoundError(
-                    f"Directory '{package_name}' not found above {current_directory}."
-                )
-            directory = parent
+        # Ensure target directory exists
+        os.makedirs(target_path, exist_ok=True)
+
+        # Calculate and print relative path
+        current_path = os.getcwd()
+        relative_path = os.path.relpath(target_path, current_path)
+
+
+        # Copy files to target directory
+        for file in files:
+
+            print(f"Uploading file: {file}")
+            if os.path.isfile(file):
+                shutil.copy(file, target_path)
+                print(f"Uploaded {file} to {target_path}")
+            else:
+                print(f"File {file} does not exist.")
+
+            # Check to see if the file is already in the directory
+            if os.path.exists(relative_path):
+                print(f"{file} already exists in {dest_folder_name}")
+            else: 
+                # Copy file into directory
+                try:
+                    shutil.copy(file, relative_path)
+                    print(f"Copied: {file} to {dest_folder_name}")
+                
+                # CHeck to see if the copy failed
+                except Exception as e:
+                    print(f"Failed to copy {file}: {e} \n")
+
+        print(f"Relative Path: {relative_path}")
+        return relative_path
 
     @staticmethod
     def _get_unique_filename(base_name, directory="."):
@@ -91,42 +116,3 @@ class SymmStateCore:
             counter += 1
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="FLPZ: A tool to study flexo and piezoelectricity"
-    )
-    parser.add_argument(
-        "inputs",
-        nargs="*",
-        help="Program type (energy, pert, couple) followed by their necessary arguments",
-    )
-
-    args = parser.parse_args()
-    inputs = args.inputs
-
-    # Validate inputs
-    if len(inputs) == 0:
-        print("Error: No program type was specified.")
-        sys.exit(1)
-
-    program_type = inputs[0]
-    additional_args = inputs[1:]  # The remaining arguments
-
-    # Instantiate FLPZ class
-    flpz_instance = SymmStateCore()
-
-    # Dispatch the appropriate method based on program type
-    if program_type == "energy":
-        flpz_instance.energy(*additional_args)
-    elif program_type == "pert":
-        flpz_instance.perturbations(*additional_args)
-    elif program_type == "couple":
-        flpz_instance.coupling(*additional_args)
-    else:
-        print(
-            f"Error: Invalid program type '{program_type}'. Available options are: energy, pert, couple."
-        )
-
-
-if __name__ == "__main__":
-    main()

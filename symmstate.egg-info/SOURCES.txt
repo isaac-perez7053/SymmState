@@ -2,7 +2,7 @@ setup.py
 symmstate/__init__.py
 symmstate/__main__.py
 symmstate/_symm_state_core.py
-symmstate/sbatch_file.py
+symmstate/slurm_file.py
 symmstate/unit_cell_module.py
 symmstate.egg-info/PKG-INFO
 symmstate.egg-info/SOURCES.txt
@@ -19,9 +19,10 @@ symmstate/flpz/perturbations.py
 symmstate/flpz/smodes_processor.py
 symmstate/flpz/coupling/__init__.py
 symmstate/flpz/coupling/coupling_program.py
+symmstate/flpz/electrotensor/__init__.py
+symmstate/flpz/electrotensor/electro_tensor_program.py
 symmstate/flpz/energy/__init__.py
 symmstate/flpz/energy/energy_program.py
-symmstate/flpz/perturbations/__init__.py
-symmstate/flpz/perturbations/perturbations_program.py
+symmstate/pseudopotentials/__init__.py
 symmstate/vasp/__init__.py
 symmstate/vasp/vasp_unit_cell.py

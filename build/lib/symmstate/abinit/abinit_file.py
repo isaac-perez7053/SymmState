@@ -19,7 +19,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
         convergence_file=None,
         smodes_input=None,
         target_irrep=None,
-        symmetry_informed_basis=False
+        symmetry_informed_basis=False,
     ):
 
         AbinitUnitCell.__init__(
@@ -28,10 +28,12 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             convergence_file=convergence_file,
             smodes_input=smodes_input,
             target_irrep=target_irrep,
-            symmetry_informed_basis=symmetry_informed_basis
+            symmetry_informed_basis=symmetry_informed_basis,
         )
 
-        self.file_name = self.abi_file.replace(".abi", "")
+        if abi_file is not None:
+            print(f"Name of abinit file: {abi_file}")
+            self.file_name = self.abi_file.replace(".abi", "")
         SlurmFile.__init__(self, batch_script_header_file)
 
     def write_custom_abifile(self, output_file, content, coords_are_cartesian=False):
@@ -52,12 +54,15 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             with open(content, "r") as hf:
                 header_content = hf.read()
 
+        # Get the unique file name if the name conflicts with other files
+        output_file = AbinitFile._get_unique_filename(output_file)
+
         # Write all content to the output file
         with open(f"{output_file}.abi", "w") as outf:
             outf.write(header_content)
 
             # Append unit cell details
-            outf.write("\n#--------------------------\n")
+            outf.write("\n#--------------------------")
             outf.write("\n# Definition of unit cell")
             outf.write("\n#--------------------------\n")
             outf.write(f"acell {' '.join(map(str, self.acell))}\n")
@@ -76,7 +81,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                     # Convert each numpy array to a flat list
                     outf.write(f"  {'  '.join(map(str, coord))}\n")
 
-            outf.write("\n#--------------------------\n")
+            outf.write("\n#--------------------------")
             outf.write("\n# Definition of atoms")
             outf.write("\n#--------------------------\n")
             outf.write(f"natom {self.natom} \n")
@@ -84,24 +89,25 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             outf.write(f"znucl {' '.join(map(str, self.znucl))}\n")
             outf.write(f"typat {' '.join(map(str, self.typat))}\n")
 
-            if self.convergence_path is None:
-                outf.write("\n#----------------------------------------\n")
+            if self.convergence_file is None:
+                outf.write("\n#----------------------------------------")
                 outf.write("\n# Definition of the planewave basis set")
                 outf.write("\n#----------------------------------------\n")
                 outf.write(f"ecut {self.ecut} \n")
                 if self.ecutsm is not None:
                     outf.write(f"ecutsm {self.ecutsm} \n")
 
-                outf.write("\n#--------------------------\n")
+                outf.write("\n#--------------------------")
                 outf.write("\n# Definition of the k-point grid")
                 outf.write("\n#--------------------------\n")
                 outf.write(f"nshiftk {self.nshiftk} \n")
+                outf.write("kptrlatt\n")
                 if self.kptrlatt is not None:
                     for i in self.kptrlatt:
                         outf.write(f"  {' '.join(map(str, i))}\n")
                 outf.write(f"shiftk {' '.join(map(str, self.shiftk))} \n")
                 outf.write(f"nband {self.nband} \n")
-                outf.write("\n#--------------------------\n")
+                outf.write("\n#--------------------------")
                 outf.write("\n# Definition of the SCF Procedure")
                 outf.write("\n#--------------------------\n")
                 outf.write(f"nstep {self.nstep} \n")
@@ -111,15 +117,19 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                 outf.write(f"{self.conv_criteria[0]} {str(self.conv_criteria[1])} \n")
 
                 # Calculate the path to the pp directory
-                package_path, package_path_rel = self.find_package_path()
+                package_path_rel = SlurmFile.upload_files_to_package(
+                    dest_folder_name='pseudopotentials'
+                )
 
                 # Check to make sure package was found and print relative path
-                if not package_path:
+                if not package_path_rel:
                     raise FileNotFoundError(
                         "Package path was not found! This is likely an issue if it wasn't installed using pip"
                     )
                 else:
-                    outf.write(f'\npp_dirpath "{package_path_rel}" \n')
+                    outf.write(
+                        f'\npp_dirpath "{package_path_rel}p" \n'
+                    )
 
                 concatenated_pseudos = " ".join(self.pseudopotentials)
 
@@ -127,7 +137,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                 print(f"{output_file} was created successfully!")
 
             else:
-                with open(self.convergence_path, "r") as cf:
+                with open(self.convergence_file, "r") as cf:
                     convergence_content = cf.read()
                 outf.write(convergence_content)
 
@@ -245,21 +255,26 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
         # Compile the content to be written in the file
         content = f"""{input_file}.abi
 {input_file}.abo
-{input_file}
-{input_file}
-{input_file}
+{input_file}_gen_input
+{input_file}_gen_output
+{input_file}_temp
     """
 
         if batch_script_header_file is not None:
             # Create a non-temporary file in the current directory
             file_path = f"{input_file}_abinit_input_data.txt"
 
+            # Check to make sure the file name does not conflict
+            file_path = AbinitFile._get_unique_filename(file_path)
+
             with open(file_path, "w") as file:
                 file.write(content)
             try:
+                batch_name = AbinitFile._get_unique_filename(f"{batch_name}.sh")
+                batch_name = os.path.basename(batch_name)
+
                 # Use the regular file's path in your operations
                 script_created = self.write_batch_script(
-                    batch_script_header_file=batch_script_header_file,
                     input_file=file_path,
                     batch_name=f"{batch_name}.sh",
                     host_spec=host_spec,
@@ -276,7 +291,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
                     print("Batch job submitted using 'sbatch'.")
                     try:
                         job_number = int(result.stdout.strip().split()[-1])
-                        self.runningJobs.append(job_number)
+                        self.running_jobs.append(job_number)
                         print(f"Job number {job_number} added to running jobs.")
                     except (ValueError, IndexError) as e:
                         print(f"Failed to parse job number: {e}")

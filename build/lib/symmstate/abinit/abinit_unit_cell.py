@@ -5,8 +5,6 @@ import re
 import shutil
 import sys
 import tempfile
-import subprocess
-import time
 import copy
 from pathlib import Path
 import warnings
@@ -63,14 +61,19 @@ class AbinitUnitCell(UnitCell):
     # TODO: Make a method that will place all pseudopotentials into the pseudopotential folder in the program.
 
     def __init__(
-        self, abi_file=None, convergence_file=None, smodes_input=None, target_irrep=None, symmetry_informed_basis=False
+        self,
+        abi_file=None,
+        convergence_file=None,
+        smodes_input=None,
+        target_irrep=None,
+        symmetry_informed_basis=False,
     ):
         """
         Initializes an instance of AbinitUnitCell.
 
         Args:
             abi_file (str): Path to the Abinit input file containing unit cell details.
-            convergence_path (str, optional): Path to a file with convergence parameters. Defaults to None.
+            convergence_file (str, optional): Path to a file with convergence parameters. Defaults to None.
             batch_script_header_file (str, optional): Path to a batch script header file. Defaults to None.
         """
         # Call the parent class's initializer with the keyword arguments
@@ -78,15 +81,11 @@ class AbinitUnitCell(UnitCell):
 
         # Allows the user to still take convergence variables from abi file
         if symmetry_informed_basis:
-            super().__init__(
-                smodes_file=smodes_input, target_irrep=target_irrep
-            )
-        else: 
-            super().__init__(
-                abi_file=abi_file
-            )
+            super().__init__(smodes_file=smodes_input, target_irrep=target_irrep)
+        else:
+            super().__init__(abi_file=abi_file)
         self.natom, self.ntypat, self.typat, self.znucl = AbinitUnitCell._process_atoms(
-            self.structure.elements
+            self.structure.species
         )
         self.rprim = np.array(self.structure.lattice.matrix)
         self.coordinates_xred = self.structure.frac_coords
@@ -119,8 +118,6 @@ class AbinitUnitCell(UnitCell):
             self._initialize_convergence_from_file()
 
         self.convergence_file = convergence_file
-
-        self.running_jobs = []
 
         # -----------------------------
         # Abinit Specific Calculations
@@ -352,9 +349,6 @@ class AbinitUnitCell(UnitCell):
                 del lines[i]
                 break
 
-        if pseudos is None:
-            raise Exception("pseudos is missing in the Abinit file!")
-
         pseudos = pseudos.split()
 
         # Take list of pseudopotential files and upload them into Abinit folder
@@ -404,53 +398,15 @@ class AbinitUnitCell(UnitCell):
         self.coordinates_xcart = self.structure.cart_coords
         self.coordinates_xred = self.structure.frac_coords
 
-    def all_jobs_finished(self):
-        """
-        Checks whether all submitted computational jobs have finished.
-
-        Returns:
-            bool: True if all jobs have completed; False otherwise.
-        """
-        for job_id in self.runningJobs:
-            # Check the status of the specific job
-            result = subprocess.run(
-                ["squeue", "-j", str(job_id)], capture_output=True, text=True
-            )
-
-            if result.returncode != 0:
-                print(f"Error checking job {job_id} status:", result.stderr)
-                continue
-
-            # If the job is found in the queue, it means it's still running or pending
-            if str(job_id) in result.stdout:
-                return False
-
-        # If none of the jobs were found in the queue, they have all finished
-        return True
-
-    def wait_for_jobs_to_finish(self, check_time=60):
-        """
-        Waits until all computational jobs are finished, checking their status periodically.
-
-        Args:
-            check_time (int): Time interval between checks, in seconds. Defaults to 60.
-        """
-        print("Waiting for jobs to finish...")
-        while not self.all_jobs_finished():
-            print(f"Jobs still running. Checking again in {check_time} seconds...")
-            time.sleep(check_time)
-        print("All jobs have finished.")
-        self.runningJobs = []
-
     def perturbations(self, perturbation, coords_is_cartesian=False):
         """
-        Applies a given perturbation to the unit cell's coordinates and returns a new UnitCell object.
+        Applies a given perturbation to the unit cell's coordinates and returns a new AbinitUnitCell object.
 
         Args:
             pert (np.ndarray): Array representing the perturbation to be applied to current coordinates.
 
         Returns:
-            UnitCell: A new instance of UnitCell with updated (perturbed) coordinates.
+            AbinitUnitCell: A new instance of UnitCell with updated (perturbed) coordinates.
         """
 
         # Ensure the perturbation has the correct shape

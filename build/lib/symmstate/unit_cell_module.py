@@ -8,9 +8,10 @@ from pymatgen.core import Structure, Lattice, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import warnings
 import subprocess
+from symmstate import SymmStateCore
 
 
-class UnitCell:
+class UnitCell(SymmStateCore):
     """
     Defines the UnitCell class which contains all the necessary information of a UnitCell.
 
@@ -61,7 +62,7 @@ class UnitCell:
                 if os.path.isfile(abi_file):
                     self.abi_file = abi_file
                     acell, rprim, coordinates, coords_are_cartesian, elements = (
-                        self._initialize_from_abifile()
+                        self._initialize_from_abifile(abi_file=abi_file)
                     )
                 else:
                     raise FileExistsError(f"The abi file, {abi_file}, does not exist")
@@ -120,11 +121,12 @@ class UnitCell:
         self.pseudopotentials = []
         self.ixc = None
 
-    def _initialize_from_abifile(self):
+    @staticmethod
+    def _initialize_from_abifile(abi_file):
         """Extracts initialization variables from Abinit File"""
 
-        temp_filepath = self.abi_file + ".temp"
-        shutil.copy(self.abi_file, temp_filepath)
+        temp_filepath = abi_file + ".temp"
+        shutil.copy(abi_file, temp_filepath)
 
         with open(temp_filepath, "r") as f:
             lines = f.readlines()
@@ -260,7 +262,9 @@ class UnitCell:
         return acell, rprim, coordinates, coords_are_cartesian, elements
 
     @staticmethod
-    def _symmatry_adapted_basis(smodes_file, target_irrep, symm_prec, smodes_path='../isobyu/smodes'):
+    def _symmatry_adapted_basis(
+        smodes_file, target_irrep, symm_prec, smodes_path="../isobyu/smodes"
+    ):
         """
         Extract header information from SMODES input file and store it in class attributes.
 
@@ -289,7 +293,6 @@ class UnitCell:
         print(f"Precision Lattice Parameters:\n {prec_lat_param}\n ")
         acell = [1, 1, 1]
 
-        print(smodes_file)
         # Execute SMODES and process output
         command = f"{smodes_path} < {smodes_file}"
         proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
@@ -447,7 +450,6 @@ class UnitCell:
         # Use typat to create the element list
         elements = [elements_symbols[i - 1] for i in typat]
 
-        # The returns of the two arrays serve two different purposes, initialization and smodes
         return [acell, rprim, coordinates, coords_are_cartesian, elements], [
             transmodes,
             isir,
@@ -460,29 +462,6 @@ class UnitCell:
             dist_mat,
             sam_atom_label,
         ]
-
-    def _get_unique_filename(base_name, directory="."):
-        """"""
-        # Get the full path for the base file
-        full_path = os.path.join(directory, base_name)
-
-        # If the file does not exist, return the base name
-        if not os.path.isfile(full_path):
-            return base_name
-
-        # Otherwise, start creating new filenames with incrementing numbers
-        counter = 1
-        while True:
-            # Format the new filename with leading zeros
-            new_name = f"{os.path.splitext(base_name)[0]}_{counter:03}{os.path.splitext(base_name)[1]}"
-            new_full_path = os.path.join(directory, new_name)
-
-            # Check if the new filename is available
-            if not os.path.isfile(new_full_path):
-                return new_name
-
-            # Increment the counter
-            counter += 1
 
     @staticmethod
     def _generate_clean_list():
@@ -713,42 +692,10 @@ class UnitCell:
         - *files: A variable number of file paths to be moved.
         - dest_folder_name (str): Destination folder name where files will be moved. Default is 'pseudopotentials'.
         """
-        # Calculate the absolute path to the destination folder within the current directory
-        current_dir = os.getcwd()
-        dest_folder = os.path.join(current_dir, dest_folder_name)
+        relative_path =  SymmStateCore.upload_files_to_package(*files, dest_folder_name=dest_folder_name)
+        return relative_path
+    
 
-        # Ensure the destination directory exists
-        if not os.path.exists(dest_folder):
-            os.makedirs(dest_folder)
-            warnings.warn(
-                "Pseudopotentials directory did not exist, making directory..."
-            )
-
-        # Check to ensure that the file exists
-        for file_path in files:
-
-            # Debug statement to check types and values
-            print(f"Uploading pseudopotential: {file_path}")
-            if not os.path.isfile(file_path):
-                print(f"File not found: {file_path} \n")
-                continue
-
-            filename = os.path.basename(file_path)
-            dest_file_path = os.path.join(dest_folder, filename)
-
-            # Check to see if the file is already in the directory
-            if os.path.exists(dest_file_path):
-                print(f"{filename} already exists in {dest_folder}\n")
-
-            else:
-                # Copy file into directory
-                try:
-                    shutil.copy(file_path, dest_file_path)
-                    print(f"Copied: {filename} to {dest_folder} \n")
-
-                # Check to see if the copy failed
-                except Exception as e:
-                    print(f"Failed to copy {filename}: {e} \n")
 
     def __repr__(self):
         """
