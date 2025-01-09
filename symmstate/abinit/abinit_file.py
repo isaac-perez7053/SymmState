@@ -134,7 +134,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                     )
                 else:
                     outf.write(
-                        f'\npp_dirpath "{package_path_rel}p" \n'
+                        f'\npp_dirpath "{package_path_rel}" \n'
                     )
 
                 concatenated_pseudos = " ".join(self.pseudopotentials)
@@ -290,7 +290,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
 
                 # Submit the job using subprocess to capture output
                 result = subprocess.run(
-                    ["sbatch", f"{batch_name}.sh"], capture_output=True, text=True
+                    ["sbatch", batch_name], capture_output=True, text=True
                 )
 
                 if result.returncode == 0:
