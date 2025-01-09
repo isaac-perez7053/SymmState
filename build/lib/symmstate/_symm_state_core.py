@@ -88,7 +88,6 @@ class SymmStateCore:
                 except Exception as e:
                     print(f"Failed to copy {file}: {e} \n")
 
-        print(f"Relative Path: {relative_path}")
         return relative_path
 
     @staticmethod

@@ -97,7 +97,6 @@ class AbinitUnitCell(UnitCell):
         # Convergence attributes
         self.ecut = None
         self.ecutsm = None
-        self.ecutsm = None
         self.nshiftk = None
         self.shiftk = []
         self.nstep = None
@@ -189,6 +188,9 @@ class AbinitUnitCell(UnitCell):
                 break
 
         self.ecutsm = ecustsm
+        if ecustsm is None:
+            # Default value of Abinit
+            self.ecutsm = 0.5
 
         # Extract nshiftk
         for i, line in enumerate(lines):
@@ -252,7 +254,8 @@ class AbinitUnitCell(UnitCell):
 
         self.nstep = nstep
         if self.nstep is None:
-            raise Exception("ecut is missing in the Abinit file!")
+            # Default Abinit value
+            self.nstep = 30
 
         # Extract diemac
         for i, line in enumerate(lines):
@@ -265,6 +268,7 @@ class AbinitUnitCell(UnitCell):
 
         self.diemac = diemac
         if self.diemac is None:
+            # Default Abinit value
             self.diemac = 4.0
 
         # Extract toldfe or tolvrs or tolsym

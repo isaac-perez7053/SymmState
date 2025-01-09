@@ -2,7 +2,7 @@ from symmstate.flpz import SmodesProcessor, FlpzCore, Perturbations
 from symmstate.abinit import *
 
 
-class EnergyProgram(FlpzCore):
+class ElectroTensorProgram(FlpzCore):
     """
     Energy subclass inheriting from flpz.
     """

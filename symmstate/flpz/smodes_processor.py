@@ -195,7 +195,7 @@ chkprim 0
         """
         # Ensure force_mat_raw is float64
         force_mat_raw = np.zeros(
-            (self.num_sam + 1, self.abinit_file.natom, 3), dtype=np.float64
+            (self.num_sam + 1, self.abinit_file.natom, 3), dtype=np.float32
         )
 
         for sam, abo in enumerate(self.jobs_ran_abo):
@@ -227,7 +227,7 @@ chkprim 0
 
         # Create force_list with dtype float64
         force_list = np.zeros(
-            (self.num_sam, self.abinit_file.natom, 3), dtype=np.float64
+            (self.num_sam, self.abinit_file.natom, 3), dtype=np.float32
         )
 
         # Subtract off the forces from the original cell
@@ -241,7 +241,7 @@ chkprim 0
         print(f"Printing force list: \n \n {force_list} \n")
 
         # Initialize the force matrix with dtype float64
-        force_matrix = np.zeros((self.num_sam, self.num_sam), dtype=np.float64)
+        force_matrix = np.zeros((self.num_sam, self.num_sam), dtype=np.float32)
 
         # Vectorized computation of the force matrix
         force_matrix = np.tensordot(
@@ -249,7 +249,7 @@ chkprim 0
         )
 
         # Store the force matrix
-        self.force_matrix = np.array(force_matrix, dtype=np.float64)
+        self.force_matrix = np.array(force_matrix, dtype=np.float32)
 
         print(f"Force Matrix: \n {self.springs_constants_matrix} \n")
 
@@ -257,7 +257,7 @@ chkprim 0
         #############################
 
         # Initialize the mass vector
-        mass_vector = np.zeros(self.num_sam, dtype=np.float64)
+        mass_vector = np.zeros(self.num_sam, dtype=np.float32)
 
         # Build the mass vector
         for m in range(self.num_sam):
@@ -282,11 +282,11 @@ chkprim 0
         print(f"Mass Matrix:\n{mass_matrix}\n")
 
         # Store the mass matrix
-        self.mass_matrix = np.array(mass_matrix, dtype=np.float64)
+        self.mass_matrix = np.array(mass_matrix, dtype=np.float32)
 
         # Construct the fc_mat matrix #
         ###############################
-        fc_mat = (-force_matrix / self.disp_mag).astype(np.float64)
+        fc_mat = (-force_matrix / self.disp_mag).astype(np.float32)
         fc_mat = (fc_mat + np.transpose(fc_mat)) / 2.0
         self.springs_constants_matrix = fc_mat
 
@@ -347,17 +347,17 @@ chkprim 0
         self.dyn_freqs = [[freq_thz[i], freq_cm[i]] for i in range(self.num_sam)]
         self.fc_evals = fc_eval[idx_dyn]
 
-        dynevecs = np.zeros((self.num_sam, self.abinit_file.natom, 3), dtype=np.float64)
+        dynevecs = np.zeros((self.num_sam, self.abinit_file.natom, 3), dtype=np.float32)
 
         for evec in range(self.num_sam):
-            real_dynevec = np.zeros((self.abinit_file.natom, 3), dtype=np.float64)
+            real_dynevec = np.zeros((self.abinit_file.natom, 3), dtype=np.float32)
             for s in range(self.num_sam):
                 real_dynevec += dynevecs_sam[s, evec] * self.dist_mat[s, :, :]
             dynevecs[evec, :, :] = real_dynevec
 
         print(f"DEGBUG: Printing Dynevecs: \n {dynevecs} \n")
 
-        mass_col = np.zeros((self.abinit_file.natom, 3), dtype=np.float64)
+        mass_col = np.zeros((self.abinit_file.natom, 3), dtype=np.float32)
         atomind = 0
 
         for atype in range(self.abinit_file.ntypat):
@@ -366,9 +366,9 @@ chkprim 0
                 atomind += 1
 
         phon_disp_eigs = np.zeros(
-            (self.num_sam, self.abinit_file.natom, 3), dtype=np.float64
+            (self.num_sam, self.abinit_file.natom, 3), dtype=np.float32
         )
-        redmass_vec = np.zeros((self.abinit_file.natom, 1), dtype=np.float64)
+        redmass_vec = np.zeros((self.abinit_file.natom, 1), dtype=np.float32)
 
         for mode in range(self.num_sam):
             phon_disp_eigs[mode, :, :] = np.divide(dynevecs[mode, :, :], mass_col)
@@ -382,7 +382,7 @@ chkprim 0
 
         self.phonon_vecs = phon_disp_eigs
         # Assign phonon vectors and reduced mass to object attributes
-        self.red_mass = redmass_vec.astype(np.float64)
+        self.red_mass = redmass_vec.astype(np.float32)
 
         print(f"DEBUG: Printing reduced mass vector: \n {self.red_mass} \n")
 

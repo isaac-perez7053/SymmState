@@ -70,14 +70,20 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             for coord in self.rprim:
                 outf.write(f"  {'  '.join(map(str, coord))}\n")
 
+
+
             if coords_are_cartesian:
                 outf.write("xcart\n")
-                for coord in self.coordinates_xcart:
+                coordinates = self.grab_cartesian_coordinates()
+                # Debug print: Inspect the coordinates before writing
+                print("Coordinates to be written:", coordinates)
+                for coord in coordinates:
                     # Convert each numpy array to a flat list
                     outf.write(f"  {'  '.join(map(str, coord))}\n")
             else:
                 outf.write("xred\n")
-                for coord in self.coordinates_xred:
+                coordinates = self.grab_reduced_coordinates()
+                for coord in coordinates:
                     # Convert each numpy array to a flat list
                     outf.write(f"  {'  '.join(map(str, coord))}\n")
 
