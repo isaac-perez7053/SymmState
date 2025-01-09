@@ -282,7 +282,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
                 # Use the regular file's path in your operations
                 script_created = self.write_batch_script(
                     input_file=file_path,
-                    batch_name=f"{batch_name}.sh",
+                    batch_name=batch_name,
                     host_spec=host_spec,
                     log=log,
                 )
