@@ -91,9 +91,6 @@ class AbinitUnitCell(UnitCell):
         self.coordinates_xred = self.structure.frac_coords
         self.coordinates_xcart = self.structure.cart_coords
 
-        a, b, c = self.structure.lattice.abc
-        self.acell = [a, b, c]
-
         # Convergence attributes
         self.ecut = None
         self.ecutsm = None

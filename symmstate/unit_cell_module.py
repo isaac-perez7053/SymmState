@@ -61,7 +61,7 @@ class UnitCell(SymmStateCore):
             if abi_file:
                 if os.path.isfile(abi_file):
                     self.abi_file = abi_file
-                    acell, rprim, coordinates, coords_are_cartesian, elements = (
+                    self.acell, rprim, coordinates, coords_are_cartesian, elements = (
                         self._initialize_from_abifile(abi_file=abi_file)
                     )
                 else:
@@ -95,13 +95,13 @@ class UnitCell(SymmStateCore):
                         f"Missing required fields: {', '.join(missing_fields)}"
                     )
 
-                acell = np.array(acell, dtype=float)
+                self.acell = np.array(acell, dtype=float)
                 rprim = np.array(rprim, dtype=float)
                 coordinates = np.array(coordinates, dtype=float)
                 elements = np.array(elements, dtype=str)
 
             # Create pymatgen structure
-            acell_vector = np.array(acell)
+            acell_vector = np.array(self.acell)
             rprim_scaled = rprim * acell_vector.T
             lattice = Lattice(rprim_scaled)
             self.structure = Structure(

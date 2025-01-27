@@ -166,7 +166,7 @@ chkprim 0
 
             # Write abifile and run abinit
             self.abinit_file.write_custom_abifile(
-                abi_name, content, coords_are_cartesian=False
+                abi_name, content, coords_are_cartesian=True
             )
             self.abinit_file.run_abinit(
                 input_file=abi_name,

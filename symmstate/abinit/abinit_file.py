@@ -65,7 +65,9 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             outf.write("\n#--------------------------")
             outf.write("\n# Definition of unit cell")
             outf.write("\n#--------------------------\n")
-            outf.write(f"acell {' '.join(map(str, self.acell))}\n")
+            outf.write("acell 1.0 1.0 1.0\n")
+            # Currently commented out to fix out the disparity between symmstate and acell
+            # outf.write(f"acell {' '.join(map(str, self.acell))}\n") 
             outf.write("rprim\n")
             for coord in self.rprim:
                 outf.write(f"  {'  '.join(map(str, coord))}\n")
