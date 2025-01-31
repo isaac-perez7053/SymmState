@@ -61,7 +61,7 @@ class SmodesProcessor(FlpzCore):
         smodes_input=None,
         target_irrep=None,
         smodes_path="../isobyu/smodes",
-        host_spec="mpirun -hosts=localhost -np 10",
+        host_spec="mpirun -hosts=localhost -np 20",
         disp_mag=0.001,
         symm_prec=1e-5,
         b_script_header_file=None,
@@ -128,7 +128,6 @@ class SmodesProcessor(FlpzCore):
         for the _perform_calculations method.
         """
         content = """
-getwfk 1
 useylm 1
 kptopt 2
 chkprim 0
@@ -251,8 +250,6 @@ chkprim 0
         # Store the force matrix
         self.force_matrix = np.array(force_matrix, dtype=np.float32)
 
-        print(f"Force Matrix: \n {self.springs_constants_matrix} \n")
-
         # Construct the mass matrix #
         #############################
 
@@ -292,7 +289,7 @@ chkprim 0
 
         print(f"Force Constants Matrix: \n {self.springs_constants_matrix} \n")
 
-        cond_numer = np.linalg.cond(fc_mat)
+        cond_number = np.linalg.cond(fc_mat)
         print(f"Condition number of the force constants matrix: {cond_number}\n")
         if cond_number > 1e5:
             warnings.warn(

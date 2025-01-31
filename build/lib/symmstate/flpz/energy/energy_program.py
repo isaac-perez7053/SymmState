@@ -1,6 +1,6 @@
-from symmstate.flpz import SmodesProcessor, FlpzCore, Perturbations
-from symmstate.abinit import *
-
+from symmstate.flpz.smodes_processor import SmodesProcessor
+from symmstate.flpz.perturbations import PerturbationsProgram
+from symmstate.flpz import FlpzCore
 
 class EnergyProgram(FlpzCore):
     """

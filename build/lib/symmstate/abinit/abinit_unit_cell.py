@@ -54,7 +54,6 @@ class AbinitUnitCell(UnitCell):
         perturbations(pert): Applies perturbations to unit cell coordinates and returns a new instance.
         copy_abinit_unit_cell(): Creates a deep copy of the current instance.
         run_energy_calculation(host_spec='mpirun -hosts=localhost -np 30'): Executes an energy calculation for the unit cell.
-        grab_energy(abo_file=None): Retrieves the total energy from an Abinit output file.
         change_coordinates(new_coordinates, cartesian=False, reduced=False): Updates the coordinates of the unit cell.
     """
 
@@ -88,11 +87,9 @@ class AbinitUnitCell(UnitCell):
             self.structure.species
         )
         self.rprim = np.array(self.structure.lattice.matrix)
+
         self.coordinates_xred = self.structure.frac_coords
         self.coordinates_xcart = self.structure.cart_coords
-
-        a, b, c = self.structure.lattice.abc
-        self.acell = [a, b, c]
 
         # Convergence attributes
         self.ecut = None
@@ -123,7 +120,7 @@ class AbinitUnitCell(UnitCell):
         # -----------------------------
 
         # Energy of the unit cell
-        self.energy = None
+        self.energy_unique =  None
 
         # Electric properties of the cell
         self.piezo_tensor_clamped = None
@@ -432,3 +429,6 @@ class AbinitUnitCell(UnitCell):
         )
 
         return copy_cell
+    
+    def __repr__(): 
+        super().__repr__

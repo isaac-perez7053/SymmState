@@ -1,6 +1,6 @@
-from symmstate.flpz import SmodesProcessor, FlpzCore, Perturbations
-from symmstate.abinit import *
-
+from symmstate.flpz.smodes_processor import SmodesProcessor
+from symmstate.flpz.perturbations import Perturbations
+from symmstate.flpz import FlpzCore
 
 class EnergyProgram(FlpzCore):
     """
@@ -19,8 +19,8 @@ class EnergyProgram(FlpzCore):
         smodes_path="/home/iperez/isobyu/smodes",
         host_spec='mpirun -hosts=localhost -np 30',
         batch_script_header_file=None,
-        symm_prec='0.00001',
-        disp_mag='0.001'
+        symm_prec=0.00001,
+        disp_mag=0.001
     ):
         # Correctly initialize superclass
         super().__init__(name=name, num_datapoints=num_datapoints, abi_file=abi_file, min_amp=min_amp, max_amp=max_amp)
@@ -37,7 +37,24 @@ class EnergyProgram(FlpzCore):
 
     def run_program(self):
         # Ensure you're accessing inherited attributes correctly
-        print("Energy program running")
+        ascii_string_1 = """
+ ____                            ____  _        _       
+/ ___| _   _ _ __ ___  _ __ ___ / ___|| |_ __ _| |_ ___ 
+\___ \| | | | '_ ` _ \| '_ ` _ \\___ \| __/ _` | __/ _ \
+ ___) | |_| | | | | | | | | | | |___) | || (_| | ||  __/
+|____/ \__, |_| |_| |_|_| |_| |_|____/ \__\__,_|\__\___|
+       |___/                                      
+"""
+        ascii_string_2 = """
+ _____                              ____                                      
+| ____|_ __   ___ _ __ __ _ _   _  |  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___  
+|  _| | '_ \ / _ \ '__/ _` | | | | | |_) | '__/ _ \ / _` | '__/ _` | '_ ` _ \ 
+| |___| | | |  __/ | | (_| | |_| | |  __/| | | (_) | (_| | | | (_| | | | | | |
+|_____|_| |_|\___|_|  \__, |\__, | |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_|
+                      |___/ |___/                   |___/        
+"""
+        print(f"{ascii_string_1} \n")
+        print(f"{ascii_string_2} \n")
         # This `genstruc` should be initialized in `flpz`
         smodes_file = SmodesProcessor(
             abi_file=self.abi_file,
@@ -67,7 +84,7 @@ class EnergyProgram(FlpzCore):
                 perturbations = Perturbations(
                     name=self.name,
                     num_datapoints=self.num_datapoints,
-                    abinit_file=self.abi_file,
+                    abi_file=self.abi_file,
                     min_amp=self.min_amp,
                     max_amp=self.max_amp,
                     perturbation=pert,

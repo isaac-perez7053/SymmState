@@ -61,7 +61,7 @@ class UnitCell(SymmStateCore):
             if abi_file:
                 if os.path.isfile(abi_file):
                     self.abi_file = abi_file
-                    self.acell, rprim, coordinates, coords_are_cartesian, elements = (
+                    acell, rprim, coordinates, coords_are_cartesian, elements = (
                         self._initialize_from_abifile(abi_file=abi_file)
                     )
                 else:
@@ -95,13 +95,13 @@ class UnitCell(SymmStateCore):
                         f"Missing required fields: {', '.join(missing_fields)}"
                     )
 
-                self.acell = np.array(acell, dtype=float)
+                acell = np.array(acell, dtype=float)
                 rprim = np.array(rprim, dtype=float)
                 coordinates = np.array(coordinates, dtype=float)
                 elements = np.array(elements, dtype=str)
 
             # Create pymatgen structure
-            acell_vector = np.array(self.acell)
+            acell_vector = np.array(acell)
             rprim_scaled = rprim * acell_vector.T
             lattice = Lattice(rprim_scaled)
             self.structure = Structure(
@@ -206,7 +206,7 @@ class UnitCell(SymmStateCore):
             raise Exception("coordinates are missing in the Abinit file!")
 
         coords_are_cartesian = False
-        if coord_type == "xcart":
+        if coord_type == "cartesian":
             coords_are_cartesian = True
 
         # Extract natom
@@ -442,7 +442,8 @@ class UnitCell(SymmStateCore):
         if crossdot_ispos == False:
             warnings.warn("Abinit requires this to be positive!")
 
-        coords_are_cartesian = False
+        # TODO: Do not assume that the coordinates will be reduced. 
+        coords_are_cartesian = True
 
         # Convert znucl to element symbols
         elements_symbols = [Element.from_Z(Z).symbol for Z in znucl]
@@ -669,6 +670,7 @@ class UnitCell(SymmStateCore):
         # Return a new instance of UnitCell with the perturbated structure
         return UnitCell(structure=perturbed_structure)
 
+    # TODO: This function is useless as the structure Pymatgen object stores both reduced and cartesian coordinates
     def change_coordinates(self, new_coordinates, coords_are_cartesian=False):
         """
         Updates the coordinates of the unit cell to new values and resets the energy attribute.

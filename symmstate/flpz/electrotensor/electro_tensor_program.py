@@ -1,5 +1,6 @@
-from symmstate.flpz import *
+from symmstate.flpz.electrotensor import *
 from symmstate.abinit import *
+from symmstate.flpz import FlpzCore
 
 
 class ElectroTensorProgram(FlpzCore):

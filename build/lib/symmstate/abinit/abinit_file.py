@@ -36,6 +36,15 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             self.file_name = self.abi_file.replace(".abi", "")
         SlurmFile.__init__(self, batch_script_header_file)
 
+        # This can hold multiple energy values. Used to store energies of runs associated with 
+        # Their corresponding abinit files. 
+        self.energies = {}
+
+        # Allows the user to save the files ran
+        self.abo_files_ran = []
+
+        
+
     def write_custom_abifile(self, output_file, content, coords_are_cartesian=False):
         """
         Writes a custom Abinit .abi file using user-defined or default parameters.
@@ -65,7 +74,9 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
             outf.write("\n#--------------------------")
             outf.write("\n# Definition of unit cell")
             outf.write("\n#--------------------------\n")
-            outf.write(f"acell {' '.join(map(str, self.acell))}\n")
+            outf.write("acell 1.0 1.0 1.0\n")
+            # Currently commented out to fix out the disparity between symmstate and acell
+            # outf.write(f"acell {' '.join(map(str, self.acell))}\n") 
             outf.write("rprim\n")
             for coord in self.rprim:
                 outf.write(f"  {'  '.join(map(str, coord))}\n")
@@ -134,7 +145,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                     )
                 else:
                     outf.write(
-                        f'\npp_dirpath "{package_path_rel}p" \n'
+                        f'\npp_dirpath "{package_path_rel}" \n'
                     )
 
                 concatenated_pseudos = " ".join(self.pseudopotentials)
@@ -282,7 +293,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
                 # Use the regular file's path in your operations
                 script_created = self.write_batch_script(
                     input_file=file_path,
-                    batch_name=f"{batch_name}.sh",
+                    batch_name=batch_name,
                     host_spec=host_spec,
                     log=log,
                 )
@@ -290,7 +301,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
 
                 # Submit the job using subprocess to capture output
                 result = subprocess.run(
-                    ["sbatch", f"{batch_name}.sh"], capture_output=True, text=True
+                    ["sbatch", batch_name], capture_output=True, text=True
                 )
 
                 if result.returncode == 0:
@@ -303,6 +314,9 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
                         print(f"Failed to parse job number: {e}")
                 else:
                     print("Failed to submit batch job:", result.stderr)
+
+                # Add running abo file to the array of abo files: 
+                self.abo_files_ran.append(f"{input_file}.abo")
 
             finally:
                 if delete_batch_script:
@@ -508,7 +522,7 @@ kptopt 2  # Takes into account time-reversal symmetry.
     # File Extraction methods
     # ---------------------------------
 
-    def grab_energy(self, abo_file=None):
+    def grab_energy(self, abo_file=None, set_unit_cell_energy=False):
         """
         Retrieves and assigns the total energy from a specified Abinit output file (`abo_file`).
 
@@ -519,7 +533,7 @@ kptopt 2  # Takes into account time-reversal symmetry.
             FileNotFoundError: If the specified `abo_file` does not exist.
         """
         if abo_file is None:
-            abo_file = f"{self.file_name}_energy.abo"
+            raise Exception("Please specify the abo file you are attempting to access")
 
         # Ensure total_energy_value is initialized
         total_energy_value = None
@@ -534,13 +548,23 @@ kptopt 2  # Takes into account time-reversal symmetry.
 
             if match:
                 total_energy_value = match.group(1)
+
+                if set_unit_cell_energy:
+
+                    # If specified, set the energy of the unit_cell
+                    self.energy_unique = float(total_energy_value)
+                else: 
+                    
+                    # Otherwise, add the total_energy_value associated with the name of the abi file grabbed from
+                    self.energies[abo_file] = total_energy_value
+
             else:
                 print("Total energy not found.")
+                
 
         except FileNotFoundError:
             print(f"The file {abo_file} was not found.")
 
-        self.energy = float(total_energy_value)
 
     def grab_flexo_tensor(self, anaddb_file=None):
         """
