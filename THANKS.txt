@@ -1,0 +1,1 @@
+Thank you to Ethan Ritz for providing the methods to effectively calculate the symmetry informed basis of UnitCells. 
