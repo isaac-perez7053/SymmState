@@ -38,24 +38,20 @@ class EnergyProgram(FlpzCore):
     def run_program(self):
         # Ensure you're accessing inherited attributes correctly
         ascii_string_1 = """
- ____                            ____  _        _       
-/ ___| _   _ _ __ ___  _ __ ___ / ___|| |_ __ _| |_ ___ 
-\___ \| | | | '_ ` _ \| '_ ` _ \\___ \| __/ _` | __/ _ \
- ___) | |_| | | | | | | | | | | |___) | || (_| | ||  __/
-|____/ \__, |_| |_| |_|_| |_| |_|____/ \__\__,_|\__\___|
-       |___/                                      
-"""
-        ascii_string_2 = """
- _____                              ____                                      
-| ____|_ __   ___ _ __ __ _ _   _  |  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___  
-|  _| | '_ \ / _ \ '__/ _` | | | | | |_) | '__/ _ \ / _` | '__/ _` | '_ ` _ \ 
-| |___| | | |  __/ | | (_| | |_| | |  __/| | | (_) | (_| | | | (_| | | | | | |
-|_____|_| |_|\___|_|  \__, |\__, | |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_|
-                      |___/ |___/                   |___/        
+ ____                                _        _       
+/ ___| _   _ _ __ ___  _ __ ___  ___| |_ __ _| |_ ___ 
+\___ \| | | | '_ ` _ \| '_ ` _ \/ __| __/ _` | __/ _ \ 
+ ___) | |_| | | | | | | | | | | \__ \ || (_| | ||  __/
+|____/ \__, |_| |_| |_|_| |_| |_|___/\__\__,_|\__\___|
+       |___/                                          
+ _____                              ____                                       
+| ____|_ __   ___ _ __ __ _ _   _  |  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___   
+|  _| | '_ \ / _ \ '__/ _` | | | | | |_) | '__/ _ \ / _` | '__/ _` | '_ ` _ \  
+| |___| | | |  __/ | | (_| | |_| | |  __/| | | (_) | (_| | | | (_| | | | | | | 
+|_____|_| |_|\___|_|  \__, |\__, | |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_| 
+                      |___/ |___/                   |___/                                        
 """
         print(f"{ascii_string_1} \n")
-        print(f"{ascii_string_2} \n")
-        # This `genstruc` should be initialized in `flpz`
         smodes_file = SmodesProcessor(
             abi_file=self.abi_file,
             smodes_input=self.smodes_input,
@@ -80,7 +76,23 @@ class EnergyProgram(FlpzCore):
         if len(normalized_phonon_vecs) == 0:
             print("No unstable phonons were found")
         else:
-            for pert in normalized_phonon_vecs:
+            ascii_string_3 = """
+  ____      _            _       _   _             
+ / ___|__ _| | ___ _   _| | __ _| |_(_)_ __   __ _ 
+| |   / _` | |/ __| | | | |/ _` | __| | '_ \ / _` |
+| |__| (_| | | (__| |_| | | (_| | |_| | | | | (_| |
+ \____\__,_|_|\___|\__,_|_|\__,_|\__|_|_| |_|\__, |
+                                             |___/ 
+ _____                      _           
+| ____|_ __   ___ _ __ __ _(_) ___  ___ 
+|  _| | '_ \ / _ \ '__/ _` | |/ _ \/ __|
+| |___| | | |  __/ | | (_| | |  __/\__ \ 
+|_____|_| |_|\___|_|  \__, |_|\___||___/
+                      |___/           
+"""
+            print(f"{ascii_string_3} \n")
+
+            for i, pert in enumerate(normalized_phonon_vecs):
                 perturbations = Perturbations(
                     name=self.name,
                     num_datapoints=self.num_datapoints,
@@ -92,11 +104,21 @@ class EnergyProgram(FlpzCore):
                     host_spec=self.host_spec
                 )
 
-                print(f"Perturbation object successfully initialized")
                 self.__perturbations.append(perturbations)
                 perturbations.generate_perturbations()
                 perturbations.calculate_energy_of_perturbations()
-                perturbations.data_analysis(save_plot=True)
+                print(f"Amplitudes of Unstable Phonon {i}: {perturbations.list_amps} \n")
+                print(f"Energies of Unstable Phonon {i}: {perturbations.list_energies} \n")
+                perturbations.data_analysis(save_plot=True, filename=f"energy_vs_amplitude_{i}")
+
+        ascii_string_4 = """
+ _____ _       _     _              _ 
+|  ___(_)_ __ (_)___| |__   ___  __| |
+| |_  | | '_ \| / __| '_ \ / _ \/ _` |
+|  _| | | | | | \__ \ | | |  __/ (_| |
+|_|   |_|_| |_|_|___/_| |_|\___|\__,_|
+"""
+        print(f"{ascii_string_4} \n")
 
     def get_smodes_processor(self):
         return self.__smodes_processor

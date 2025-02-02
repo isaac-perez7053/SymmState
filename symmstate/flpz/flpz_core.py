@@ -24,10 +24,11 @@ class FlpzCore(SymmStateCore):
             raise ValueError("min_amp and max_amp should be floats.")
 
         if not isinstance(num_datapoints, int) or num_datapoints <= 0:
-            raise ValueError("num_datapoints shoudl be a positive integer.")
-        
-        if os.path.isfile(abi_file):
-            raise FileExistsError("An Abinit file was not detected!")
+            raise ValueError("num_datapoints should be a positive integer.")
+
+# I'm not sure why this keeps throwing an error even if an abi file exists.         
+        # if os.path.isfile(abi_file):
+        #     raise FileExistsError("An Abinit file was not detected!")
 
         self.name = str(name)
         self.num_datapoints = int(num_datapoints)

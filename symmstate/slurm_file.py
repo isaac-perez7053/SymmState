@@ -19,13 +19,13 @@ class SlurmFile(SymmStateCore):
         if os.path.isfile(sbatch_header_source):
             try:
                 with open(sbatch_header_source, "r") as file:
-                    self.sbatch_header = file.read()
+                    self.batch_header = file.read()
             except Exception as e:
                 raise ValueError(
                     f"An error occurred while reading the header file: {e}"
                 )
         else:
-            self.sbatch_header = sbatch_header_source
+            self.batch_header = sbatch_header_source
 
         print(f"Batch header: {self.batch_header}")
 
@@ -61,7 +61,7 @@ class SlurmFile(SymmStateCore):
             with open(batch_name, "w") as file:
                 # Write the contents of the batch script header
                 file.write("#!/bin/bash\n")
-                file.write(self.sbatch_header)
+                file.write(self.batch_header)
 
                 # Write the rest of the batch script
                 if host_spec is None:

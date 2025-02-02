@@ -141,7 +141,7 @@ chkprim 0
         self.abinit_file.run_abinit(
             input_file=abi_name,
             batch_name=batch_name,
-            batch_script_header_file=self.abinit_file.sbatch_header,
+            batch_script_header_file=self.abinit_file.batch_header,
             host_spec=self.host_spec,
             log="dist_0.log",
             delete_batch_script=False,
@@ -170,7 +170,7 @@ chkprim 0
             self.abinit_file.run_abinit(
                 input_file=abi_name,
                 batch_name=batch_name,
-                batch_script_header_file=self.abinit_file.sbatch_header,
+                batch_script_header_file=self.abinit_file.batch_header,
                 host_spec=self.host_spec,
                 log=f"dist_{j}.log",
                 delete_batch_script=False,
@@ -317,6 +317,7 @@ chkprim 0
         dynevals, dynevecs_sam = np.linalg.eig(dyn_mat)
 
         print(f"DEBUG: Printing dynevecs_sam: \n {dynevecs_sam} \n")
+        print(f"DEBUG: Printing dynevals: \n {dynevals} \n")
 
         eV_to_J = 1.602177e-19
         ang_to_m = 1.0e-10

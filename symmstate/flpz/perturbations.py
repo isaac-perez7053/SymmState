@@ -74,7 +74,7 @@ class Perturbations(FlpzCore):
         self.host_spec = str(host_spec)
 
         self.list_abi_files = []
-        self.perturbed_objects = [self.abinit_file]
+        self.perturbed_objects = []
         self.list_energies = []
         self.list_amps = []
         self.list_flexo_tensors = []
@@ -102,7 +102,7 @@ class Perturbations(FlpzCore):
 
             # Compute the perturbations
             perturbed_values = current_amp * self.pert
-            perturbation_result = self.abinit_file.perturbations(perturbed_values)
+            perturbation_result = self.abinit_file.perturbations(perturbed_values, coords_is_cartesian=True)
 
             # Add the new object to a list
             self.perturbed_objects.append(perturbation_result)
@@ -117,8 +117,9 @@ class Perturbations(FlpzCore):
             perturbation_object.file_name = FlpzCore._get_unique_filename(
                 f"{perturbation_object.file_name}_{i}"
             )
-            perturbation_object.file_name = os.path.basename(perturbation_object.file_name)
 
+            perturbation_object.file_name = os.path.basename(perturbation_object.file_name)
+               
             # Run energy calculation and save file name 
             perturbation_object.run_energy_calculation(host_spec=self.host_spec)
             self.list_abi_files.append(f"{perturbation_object.file_name}.abi")
@@ -128,9 +129,10 @@ class Perturbations(FlpzCore):
 
         # Extract energy information
         self.abinit_file.wait_for_jobs_to_finish(check_time=90)
-        for pertrubation_object in self.perturbed_objects:
-            pertrubation_object.grab_energy()
-            self.list_energies.append(pertrubation_object.energy)
+
+        for object in self.perturbed_objects:
+            object.grab_energy(f"{object.file_name}_energy.abo")
+            self.list_energies.append(object.energy)
 
     def calculate_piezo_of_perturbations(self):
         """
