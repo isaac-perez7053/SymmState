@@ -1,3 +1,3 @@
-from .coupling import coupling_main
+from symmstate.flpz.coupling import CouplingProgram
 
-__all__ = ['main']
+__all__ = ["CouplingProgram"]

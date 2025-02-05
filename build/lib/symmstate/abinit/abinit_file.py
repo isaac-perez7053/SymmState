@@ -34,14 +34,9 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
         if abi_file is not None:
             print(f"Name of abinit file: {abi_file}")
             self.file_name = self.abi_file.replace(".abi", "")
+
         SlurmFile.__init__(self, batch_script_header_file)
 
-        # This can hold multiple energy values. Used to store energies of runs associated with 
-        # Their corresponding abinit files. 
-        self.energies = {}
-
-        # Allows the user to save the files ran
-        self.abo_files_ran = []
 
         
 
@@ -151,7 +146,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
                 concatenated_pseudos = " ".join(self.pseudopotentials)
 
                 outf.write(f'pseudos "{concatenated_pseudos}" \n')
-                print(f"{output_file} was created successfully!")
+                print(f"The Abinit file {output_file} was created successfully! \n")
 
             else:
                 with open(self.convergence_file, "r") as cf:
@@ -297,7 +292,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
                     host_spec=host_spec,
                     log=log,
                 )
-                print(f"Was the batch script successfully created: {script_created}")
+                print(f"Was the batch script successfully created: {script_created} \n")
 
                 # Submit the job using subprocess to capture output
                 result = subprocess.run(
@@ -314,9 +309,6 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
                         print(f"Failed to parse job number: {e}")
                 else:
                     print("Failed to submit batch job:", result.stderr)
-
-                # Add running abo file to the array of abo files: 
-                self.abo_files_ran.append(f"{input_file}.abo")
 
             finally:
                 if delete_batch_script:
@@ -468,7 +460,7 @@ prteig 0
             batch_script_header_file=self.batch_header,
         )
 
-    def run_energy_calculation(self, host_spec="mpirun -hosts=localhost -np 30"):
+    def run_energy_calculation(self, host_spec="mpirun -hosts=localhost -np 20"):
         """
         Runs an energy calculation for the unit cell using default or provided host specifications.
 
@@ -482,7 +474,6 @@ prteig 0
 
 getwfk1 0
 kptopt1 1
-tolvrs 1.0d-18
 
 # turn off various file outputs
 prtpot 0
@@ -503,13 +494,14 @@ kptopt 2  # Takes into account time-reversal symmetry.
 
         # Use these paths in your methods
         self.write_custom_abifile(
-            output_file=output_file, header_file=content, toldfe=False
+            output_file=output_file, content=content, coords_are_cartesian=True
         )
         self.run_abinit(
             input_file=output_file,
             batch_name=batch_name,
             host_spec=host_spec,
             batch_script_header_file=self.batch_header,
+            log=f"{output_file}.log"
         )
 
     def run_anaddb_file(self, content):
@@ -522,7 +514,7 @@ kptopt 2  # Takes into account time-reversal symmetry.
     # File Extraction methods
     # ---------------------------------
 
-    def grab_energy(self, abo_file=None, set_unit_cell_energy=False):
+    def grab_energy(self, abo_file):
         """
         Retrieves and assigns the total energy from a specified Abinit output file (`abo_file`).
 
@@ -548,16 +540,7 @@ kptopt 2  # Takes into account time-reversal symmetry.
 
             if match:
                 total_energy_value = match.group(1)
-
-                if set_unit_cell_energy:
-
-                    # If specified, set the energy of the unit_cell
-                    self.energy_unique = float(total_energy_value)
-                else: 
-                    
-                    # Otherwise, add the total_energy_value associated with the name of the abi file grabbed from
-                    self.energies[abo_file] = total_energy_value
-
+                self.energy = float(total_energy_value)
             else:
                 print("Total energy not found.")
                 

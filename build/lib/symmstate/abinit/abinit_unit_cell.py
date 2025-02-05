@@ -120,7 +120,7 @@ class AbinitUnitCell(UnitCell):
         # -----------------------------
 
         # Energy of the unit cell
-        self.energy_unique =  None
+        self.energy =  None
 
         # Electric properties of the cell
         self.piezo_tensor_clamped = None

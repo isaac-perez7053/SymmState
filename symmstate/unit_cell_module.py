@@ -2,11 +2,11 @@ import numpy as np
 import os
 import re
 import shutil
-import sys
 from pathlib import Path
 from pymatgen.core import Structure, Lattice, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import warnings
+from decimal import Decimal, ROUND_HALF_UP
 import subprocess
 from symmstate import SymmStateCore
 
@@ -110,6 +110,10 @@ class UnitCell(SymmStateCore):
                 coords=coordinates,
                 coords_are_cartesian=coords_are_cartesian,
             )
+
+            # Clean the reduced coordinates of the unit cell
+            self.clean_reduced_coordinates()
+
         else:
             if isinstance(structure, Structure):
                 self.structure = structure
@@ -686,6 +690,48 @@ class UnitCell(SymmStateCore):
             coords_are_cartesian=coords_are_cartesian,
         )
 
+        # Clean the reduced coordinates of the structure. 
+        self.clean_reduced_coordinates()
+
+    def _round_to_nearest(self, value):
+        # Convert value to Decimal for better precision
+        d = Decimal(str(value))
+        # Round to the nearest number with up to a reasonable precision
+        rounded_decimal = d.quantize(Decimal('1e-15'), rounding=ROUND_HALF_UP)
+        # Convert the Decimal to a float
+        return float(rounded_decimal)
+
+    # TODO:  This process needs to happen everytime I decide to change coordinates. Otherwise, I will run into floating point errors
+    def clean_reduced_coordinates(self):
+        # Copy the array to avoid modifying the original
+        cleaned_arr = np.copy(self.structure.frac_coords)
+        
+        # Function to round, and check tiny numbers
+        def clean_value(x):
+            # Round up if ending with .9999... to the nearest integer
+            if abs(x - self._round_to_nearest(x)) < 1e-9:
+                return self._round_to_nearest(x)
+            # Set values close to zero (on the order of e-17) to zero
+            elif abs(x) < 1e-16:
+                return 0.0
+            # Return the number itself if no conditions are met
+            else:
+                return x
+        
+        # Vectorize the cleaning function for the numpy array
+        vectorized_clean_value = np.vectorize(clean_value)
+
+        # Apply function to each element
+        cleaned_arr = vectorized_clean_value(cleaned_arr)
+
+        # Update coordinates to used clean array. 
+        self.structure = Structure(
+            lattice=self.structure.lattice,
+            species=self.structure.species,
+            coords=cleaned_arr,
+            coords_are_cartesian=False,
+        )
+
     def upload_pseudopotentials(self, *files, dest_folder_name="pseudopotentials"):
         """
         Moves files specified in the arguments to the designated pseudopotentials folder.
@@ -697,7 +743,6 @@ class UnitCell(SymmStateCore):
         relative_path =  SymmStateCore.upload_files_to_package(*files, dest_folder_name=dest_folder_name)
         return relative_path
     
-
 
     def __repr__(self):
         """

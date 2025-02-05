@@ -1,3 +1,3 @@
-from symmstate.symm_state_programs.energy.energy_program import EnergyProgram
+from symmstate.flpz.energy.energy_program import EnergyProgram
 
 __all__ = ['EnergyProgram']

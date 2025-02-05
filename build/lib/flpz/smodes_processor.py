@@ -141,7 +141,7 @@ chkprim 0
         self.abinit_file.run_abinit(
             input_file=abi_name,
             batch_name=batch_name,
-            batch_script_header_file=self.abinit_file.sbatch_header,
+            batch_script_header_file=self.abinit_file.batch_header,
             host_spec=self.host_spec,
             log="dist_0.log",
             delete_batch_script=False,
@@ -170,7 +170,7 @@ chkprim 0
             self.abinit_file.run_abinit(
                 input_file=abi_name,
                 batch_name=batch_name,
-                batch_script_header_file=self.abinit_file.sbatch_header,
+                batch_script_header_file=self.abinit_file.batch_header,
                 host_spec=self.host_spec,
                 log=f"dist_{j}.log",
                 delete_batch_script=False,
@@ -317,11 +317,21 @@ chkprim 0
         dynevals, dynevecs_sam = np.linalg.eig(dyn_mat)
 
         print(f"DEBUG: Printing dynevecs_sam: \n {dynevecs_sam} \n")
+        print(f"DEBUG: Printing dynevals: \n {dynevals} \n")
+
+        print("Eigenvalues:", dynevals)
+        print("Absolute eigenvalues:", np.absolute(dynevals))
+        print("Frequency calculation intermediate steps:", np.sqrt(np.absolute(dynevals) * eV_to_J / (ang_to_m**2 * AMU_to_kg)))
+
 
         eV_to_J = 1.602177e-19
         ang_to_m = 1.0e-10
         AMU_to_kg = 1.66053e-27
         c = 2.9979458e10
+
+        # min_eigenvalue = 1e-10  # You can adjust this threshold as needed
+
+        # dynevals_positive = np.where(dynevals > min_eigenvalue, dynevals, 0)
 
         freq_thz = np.multiply(
             np.sign(dynevals),
@@ -340,6 +350,8 @@ chkprim 0
         dynevecs_sam = dynevecs_sam[:, idx_dyn]
 
         freq_cm = freq_thz * 1.0e12 / c
+
+        print(f"Printing frequency in wavenumbers: {freq_cm}")
 
         self.dyn_freqs = [[freq_thz[i], freq_cm[i]] for i in range(self.num_sam)]
         self.fc_evals = fc_eval[idx_dyn]

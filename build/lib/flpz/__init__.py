@@ -1,5 +1,3 @@
-from symmstate._symm_state_core import FlpzCore
+from symmstate.flpz.flpz_core import FlpzCore
 
 __all__ = ['FlpzCore']
-
-

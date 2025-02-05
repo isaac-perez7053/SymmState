@@ -12,6 +12,7 @@ symmstate.egg-info/entry_points.txt
 symmstate.egg-info/requires.txt
 symmstate.egg-info/top_level.txt
 symmstate/abinit/__init__.py
+symmstate/abinit/abinit_convergence_file.py
 symmstate/abinit/abinit_file.py
 symmstate/abinit/abinit_unit_cell.py
 symmstate/flpz/__init__.py
@@ -26,4 +27,5 @@ symmstate/flpz/energy/__init__.py
 symmstate/flpz/energy/energy_program.py
 symmstate/pseudopotentials/__init__.py
 symmstate/vasp/__init__.py
+symmstate/vasp/vasp_convergence_file.py
 symmstate/vasp/vasp_unit_cell.py
