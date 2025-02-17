@@ -364,9 +364,9 @@ rfstrs4 3
 rfstrs_ref4 1
 tolvrs4 1.0d-8
 
-# turn off various file outputs
-prtpot 0
-prteig 0
+getwfk 1
+useylm 1  # Use of spherical harmonics
+kptopt 2  # Takes into account time-reversal symmetry. 
 """
         # Get the current working directory
         working_directory = os.getcwd()

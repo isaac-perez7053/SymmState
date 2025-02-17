@@ -74,7 +74,7 @@ class Perturbations(FlpzCore):
         self.host_spec = str(host_spec)
 
         self.list_abi_files = []
-        self.perturbed_objects = [self.abinit_file]
+        self.perturbed_objects = []
         self.list_energies = []
         self.list_amps = []
         self.list_flexo_tensors = []
@@ -155,9 +155,20 @@ class Perturbations(FlpzCore):
 
             # Extract energy and piezoelectric properties 
             self.abinit_file.wait_for_jobs_to_finish(check_time=300)
-            for perturbation_object in self.perturbed_objects:
-                perturbation_object.grab_cartesian_coordinates()
-                perturbation_object.grab_piezo_tensor()
+
+            # Run anaddb jobs on all piezoelectric files
+            anaddb_piezo_files = []
+            for pertrubation_object_piezo in self.perturbed_objects:
+                anaddb_file_name = pertrubation_object_piezo.run_anaddb_file(piezo=True)
+                anaddb_piezo_files.append(anaddb_file_name)
+            
+            # Small wait to ensure anaddb is finished
+            self.abinit_file.wait_for_jobs_to_finish(check_time=60, check_once=True)
+                
+            # Collect data
+            for i, perturbation_object in enumerate(self.perturbed_objects):
+                perturbation_object.grab_energy(f"{perturbation_object.file_name}_energy.abo")
+                perturbation_object.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i])
                 self.list_energies.append(perturbation_object.energy)
                 self.list_piezo_tensors_clamped.append(
                     perturbation_object.piezo_tensor_clamped
