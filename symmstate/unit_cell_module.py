@@ -701,7 +701,8 @@ class UnitCell(SymmStateCore):
         # Convert the Decimal to a float
         return float(rounded_decimal)
 
-    # TODO:  This process needs to happen everytime I decide to change coordinates. Otherwise, I will run into floating point errors
+    # TODO: I need to ensure to fix the sign as positive otherwise, I could run into some floating point errors with 
+    # Abinit
     def clean_reduced_coordinates(self):
         # Copy the array to avoid modifying the original
         cleaned_arr = np.copy(self.structure.frac_coords)

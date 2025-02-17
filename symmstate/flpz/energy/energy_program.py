@@ -20,7 +20,8 @@ class EnergyProgram(FlpzCore):
         host_spec='mpirun -hosts=localhost -np 30',
         batch_script_header_file=None,
         symm_prec=0.00001,
-        disp_mag=0.001
+        disp_mag=0.001,
+        unstable_threshold=-20,
     ):
         # Correctly initialize superclass
         super().__init__(name=name, num_datapoints=num_datapoints, abi_file=abi_file, min_amp=min_amp, max_amp=max_amp)
@@ -34,6 +35,7 @@ class EnergyProgram(FlpzCore):
         self.batch_script_header_file = batch_script_header_file
         self.symm_prec = symm_prec
         self.disp_mag = disp_mag
+        self.unstable_threshold = unstable_threshold
 
     def run_program(self):
         # Ensure you're accessing inherited attributes correctly
@@ -61,6 +63,7 @@ class EnergyProgram(FlpzCore):
             symm_prec=self.symm_prec,
             disp_mag=self.disp_mag,
             b_script_header_file=self.batch_script_header_file,
+            unstable_threshold=self.unstable_threshold,
         )
 
         self.__smodes_processor = smodes_file

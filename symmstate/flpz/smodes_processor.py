@@ -65,6 +65,7 @@ class SmodesProcessor(FlpzCore):
         disp_mag=0.001,
         symm_prec=1e-5,
         b_script_header_file=None,
+        unstable_threshold=-20,
     ):
         """
         Initializes a SmodesProcessor with specified input file, SMODES parameters, and Abinit configurations.
@@ -121,6 +122,9 @@ class SmodesProcessor(FlpzCore):
         self.fc_evals = None
         self.phonon_vecs = None
         self.red_mass = None
+
+        # Unstable threshold
+        self.unstable_threshold = unstable_threshold
 
     def _loop_modes(self):
         """
@@ -321,7 +325,6 @@ chkprim 0
 
         print("Eigenvalues:", dynevals)
         print("Absolute eigenvalues:", np.absolute(dynevals))
-        print("Frequency calculation intermediate steps:", np.sqrt(np.absolute(dynevals) * eV_to_J / (ang_to_m**2 * AMU_to_kg)))
 
 
         eV_to_J = 1.602177e-19
@@ -329,15 +332,19 @@ chkprim 0
         AMU_to_kg = 1.66053e-27
         c = 2.9979458e10
 
+        intermediate_steps = np.sqrt(np.absolute(dynevals) * eV_to_J / (ang_to_m**2 * AMU_to_kg * 10e46)) * 10e-23
+        print("Frequency calculation intermediate steps:", intermediate_steps)
+
         # min_eigenvalue = 1e-10  # You can adjust this threshold as needed
 
         # dynevals_positive = np.where(dynevals > min_eigenvalue, dynevals, 0)
 
+        # Further calculations
         freq_thz = np.multiply(
             np.sign(dynevals),
-            np.sqrt(np.absolute(dynevals) * eV_to_J / (ang_to_m**2 * AMU_to_kg))
-            * 1.0e-12,
+            intermediate_steps * 1.0e-12,
         )
+
         fc_eval = np.multiply(np.sign(fc_evals), np.sqrt(np.absolute(fc_evals)))
 
         print(f"DEBUG: Printing freq_thz: \n {freq_thz} \n ")
@@ -417,7 +424,7 @@ chkprim 0
         print(f"DEBUG: Printing phonons: \n {self.phonon_vecs} \n")
         # Iterate over dyn_freqs to check the first element of each sublist
         for index, (_, freq_thz) in enumerate(self.dyn_freqs):
-            if freq_thz < -20:
+            if freq_thz < self.unstable_threshold:
                 negative_indicies.append(index)
 
         # Return the list of indicies or False if none are negative

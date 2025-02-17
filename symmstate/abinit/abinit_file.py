@@ -267,7 +267,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
         # Compile the content to be written in the file
         content = f"""{input_file}.abi
 {input_file}.abo
-{input_file}_gen_input
+{input_file}o
 {input_file}_gen_output
 {input_file}_temp
     """
@@ -439,9 +439,10 @@ getddk5 2
 getdkdk5 3
 lw_flexo5 1
 
-# turn off various file outputs
-prtpot 0
-prteig 0
+
+getwfk 1
+useylm 1  # Use of spherical harmonics
+kptopt 2  # Takes into account time-reversal symmetry. 
 """
         # Get the current working directory
         working_directory = os.getcwd()
@@ -449,6 +450,7 @@ prteig 0
         # Construct the full paths for the output and batch files
         output_file = os.path.join(working_directory, f"{self.file_name}_energy")
         batch_name = os.path.join(working_directory, f"{self.file_name}_bscript")
+
         # Use these paths in your methods
         self.write_custom_abifile(
             output_file=output_file, header_file=content, toldfe=False
@@ -504,8 +506,81 @@ kptopt 2  # Takes into account time-reversal symmetry.
             log=f"{output_file}.log"
         )
 
-    def run_anaddb_file(self, content):
-        pass
+    def run_anaddb_file(self, flexo=False, peizo=False):
+        if flexo:
+            content = """
+! anaddb calculation of flexoelectric tensor
+
+flexoflag 1
+"""
+            files_content = f"""
+{self.file_name}_flexo_anaddb.abi
+{self.file_name}_flexo_output
+{self.file_name}o_DS5_DDB
+dummy1
+dummy2
+dummy3
+"""
+            # Write all content to the output file
+            with open(f"{self.file_name}_flexo_anaddb.abi", "w") as outf:
+                outf.write(content)
+            
+            with open(f"{self.file_name}_flexo_anaddb.files", "w") as outff:
+                outff.write(files_content)
+
+            # Execute anaddb directly through the terminal
+            command = f"anaddb < {self.file_name}_flexo_anaddb.files > {self.file_name}_flexo_anaddb.log"
+
+            try:
+                # Run the command
+                subprocess.run(command, shell=True, check=True)
+                print(f"Command executed successfully: {command}")
+            except subprocess.CalledProcessError as e:
+                print(f"An error occurred while executing the command: {e}")
+            
+            # Return the name of the output file 
+            return f"{self.file_name}_flexo_output"
+
+        elif peizo:
+            content = """
+! Input file for the anaddb code
+
+elaflag 3  ! flag for the elastic constant
+piezoflag 3 !the flag for the piezoelectric constant
+instrflag 1 ! the flag for the internal strain tensor
+"""
+            files_content = f"""
+{self.file_name}_piezo_anaddb.abi
+{self.file_name}_piezo_output
+{self.file_name}o_DS4_DDB
+dummy1
+dummy2
+dummy3
+"""
+            # Write all content to the output file
+            with open(f"{self.file_name}_piezo_anaddb.abi", "w") as outf:
+                outf.write(content)
+            
+            with open(f"{self.file_name}_piezo_anaddb.files", "w") as outff:
+                outff.write(files_content)
+
+            # Execute anaddb directly through the terminal
+            command = f"anaddb < {self.file_name}_piezo_anaddb.files > {self.file_name}_piezo_anaddb.log"
+
+            try:
+                # Run the command
+                subprocess.run(command, shell=True, check=True)
+                print(f"Command executed successfully: {command}")
+            except subprocess.CalledProcessError as e:
+                print(f"An error occurred while executing the command: {e}")
+            
+            # Return the name of the output file 
+            return f"{self.file_name}_piezo_output"
+
+        else: 
+            return
+            
+        
 
     def run_mrgddb_file(self, content):
         pass
@@ -548,63 +623,68 @@ kptopt 2  # Takes into account time-reversal symmetry.
         except FileNotFoundError:
             print(f"The file {abo_file} was not found.")
 
-
     def grab_flexo_tensor(self, anaddb_file=None):
         """
-        Retrieves and assigns the electronic flexoelectric coefficients from a specified Abinit output file (`abo_file`).
+        Retrieves the TOTAL flexoelectric tensor from the specified file.
 
         Args:
-            abo_file (str, optional): The path to the Abinit output file. Defaults to auto-generated name.
+            anaddb_file (str, optional): The path to the Abinit output file. Defaults to a generated file name.
 
         Raises:
-            FileNotFoundError: If the specified `abo_file` does not exist.
+            FileNotFoundError: If the specified `anaddb_file` does not exist.
         """
         if anaddb_file is None:
-            anaddb_file = f"{self.file_name}_energy.abo"
+            anaddb_file = f"file_name_energy.abo"
+
+        # Initialize array to store the flexoelectric tensor
+        flexo_tensor = None
 
         try:
             with open(anaddb_file) as f:
                 # Read all content as a single string
                 abo_content = f.read()
 
-            # Apply regex to find the flexoelectric tensor
-            tensor_pattern = r"Type-II electronic \(clamped ion\) flexoelectric tensor.*?^([\s\S]+?)(?:^\s*$|#)"
-            match = re.search(tensor_pattern, abo_content, re.MULTILINE)
-
-            if match:
-                tensor_str = match.group(1).strip()
-                # Convert tensor_str to a numerical array
-                self.flexo_tensor = self._parse_tensor(tensor_str)
-                print("Flexo tensor successfully extracted.")
-            else:
-                print("Flexo tensor not found in the file.")
+            # Extract TOTAL flexoelectric tensor
+            flexo_match = re.search(
+                r"TOTAL flexoelectric tensor \(units= nC/m\)\s*\n\s+xx\s+yy\s+zz\s+yz\s+xz\s+xy\n((?:.*\n){9})",
+                abo_content,
+            )
+            
+            if flexo_match:
+                tensor_strings = flexo_match.group(1).strip().split("\n")
+                flexo_tensor = np.array(
+                    [list(map(float, line.split()[1:])) for line in tensor_strings]
+                )
 
         except FileNotFoundError:
             print(f"The file {anaddb_file} was not found.")
+        
+        self.flexo_tensor = flexo_tensor
 
-    def _parse_tensor(self, tensor_str):
+    def parse_tensor(self, tensor_str):
         """
-        Parse a string representation of tensor into a nested list or numpy array.
-
-        Args:
-            tensor_str (str): String representation of the tensor.
-
-        Returns:
-            parsed_tensor (list or ndarray): Parsed tensor as a nested list or numpy array.
+        Parses a tensor string into a NumPy array.
+        Assumes the tensor data is represented as lines of space-separated numbers.
         """
-        lines = tensor_str.splitlines()
-        parsed_tensor = []
+        lines = tensor_str.strip().splitlines()
+        tensor_data = []
 
         for line in lines:
-            numbers = [float(num) for num in line.split()]
-            parsed_tensor.append(numbers)
+            # Split each line into parts and attempt to cast them to floats
+            elements = line.split()
+            if all(part.lstrip('-').replace('.', '', 1).isdigit() for part in elements):
+                try:
+                    numbers = [float(value) for value in elements]
+                    tensor_data.append(numbers)
+                except ValueError as e:
+                    print(f"Could not convert line to numbers: {line}, Error: {e}")
+                    raise
 
-        return parsed_tensor
+        return np.array(tensor_data)
 
     def grab_piezo_tensor(self, anaddb_file=None):
         """
-        Retrieves and assigns the total energy from a specified Abinit output file (`abo_file`)
-        along with the clamped and relaxed ion piezoelectric tensors.
+        Retrieves the clamped and relaxed ion piezoelectric tensors.
 
         Args:
             abo_file (str, optional): The path to the Abinit output file. Defaults to auto-generated name.
@@ -623,15 +703,6 @@ kptopt 2  # Takes into account time-reversal symmetry.
             with open(anaddb_file) as f:
                 # Read all content as a single string
                 abo_content = f.read()
-
-            # Extract total energy value
-            energy_match = re.search(
-                r"total_energy\s*:\s*(-?\d+\.\d+E?[+-]?\d*)", abo_content
-            )
-            if energy_match:
-                self.energy = float(energy_match.group(1))
-            else:
-                print("Total energy not found.")
 
             # Extract clamped ion piezoelectric tensor
             clamped_match = re.search(

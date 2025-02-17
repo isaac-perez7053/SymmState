@@ -74,7 +74,7 @@ class Perturbations(FlpzCore):
         self.host_spec = str(host_spec)
 
         self.list_abi_files = []
-        self.perturbed_objects = []
+        self.perturbed_objects = [self.abinit_file]
         self.list_energies = []
         self.list_amps = []
         self.list_flexo_tensors = []
@@ -185,11 +185,32 @@ class Perturbations(FlpzCore):
             # Append most recent job to my array
             self.abinit_file.running_jobs.append(perturbation_object.running_jobs[-1])
 
+        # Wait for flexoelec jobs to finish
         self.abinit_file.wait_for_jobs_to_finish(check_time=600)
+
+        # Run anaddb jobs on all flexoelectric files
+        anaddb_flexo_files = []
         for perturbation_object in self.perturbed_objects:
-            perturbation_object.grab_energy()
-            perturbation_object.grab_flexo_tensor()
-            perturbation_object.grab_piezo_tensor()
+            anaddb_file_name = perturbation_object.run_anaddb_file(flexo=True)
+            anaddb_flexo_files.append(anaddb_file_name)
+        
+        # Small wait to ensure anaddb has ran
+        self.abinit_file.wait_for_jobs_to_finish(check_time=60, check_once=True)
+
+        # Run anaddb jobs on all piezoelectric files
+        anaddb_piezo_files = []
+        for perturbation_object in self.perturbed_objects:
+            anaddb_file_name = perturbation_object.run_anaddb_file(peizo=True)
+            anaddb_piezo_files.append(anaddb_file_name)
+        
+        # Small wait to ensure anaddb has ran
+        self.abinit_file.wait_for_jobs_to_finish(check_time=60, check_once=True)
+
+        # Collect data
+        for i, perturbation_object in enumerate(self.perturbed_objects):
+            perturbation_object.grab_energy(f"{perturbation_object.file_name}_energy.abo")
+            perturbation_object.grab_flexo_tensor(anaddb_file=anaddb_flexo_files[i])
+            perturbation_object.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i])
             self.list_energies.append(perturbation_object.energy)
             self.list_piezo_tensors_clamped.append(
                 perturbation_object.piezo_tensor_clamped
@@ -199,13 +220,32 @@ class Perturbations(FlpzCore):
             )
             self.list_flexo_tensors.append(perturbation_object.flexo_tensor)
 
+    def _clean_lists(self, amps, to_be_cleaned_list):
+        # Create new lists to hold the cleaned data
+        cleaned_amps = []
+        cleaned_list = []
+
+        if len(amps) != len(to_be_cleaned_list):
+            raise ValueError("Arrays must be the same length!")
+
+        # Iterate over indices and tensor elements in self.list_flexo_tensors
+        for i, tensor in enumerate(to_be_cleaned_list):
+            if tensor is not None:
+                # If tensor is not None, append it and the corresponding amp to the cleaned lists
+                cleaned_amps.append(cleaned_amps[i])
+                cleaned_list.append(tensor)
+
+        # Output the cleaned lists
+        return cleaned_amps, cleaned_list
+
+
     # TODO: this function is not finised
     def data_analysis(
         self,
         piezo=False,
         flexo=False,
         save_plot=False,
-        filename="energy_vs_amplitude.png",
+        filename="energy_vs_amplitude",
         component_string="all",
         plot_piezo_relaxed_tensor=False,
     ):
@@ -222,13 +262,17 @@ class Perturbations(FlpzCore):
         """
 
         if flexo:
+
             if len(self.list_amps) != len(self.list_flexo_tensors):
                 raise ValueError(
                     "Mismatch between x_vec and list of flexoelectric tensors."
                 )
+        
+            # Clean up Array of any missing values
+            cleaned_amps, cleaned_flexo_tensors = self._clean_lists(self.list_amps, self.list_flexo_tensors)
 
             # Determine the number of components in the flattened tensor
-            num_components = self.list_flexo_tensors[0].flatten().size
+            num_components = cleaned_flexo_tensors[0].flatten().size
 
             if component_string == "all":
                 selected_indices = list(range(num_components))
@@ -243,8 +287,8 @@ class Perturbations(FlpzCore):
                     )
 
             # Prepare data for plotting
-            plot_data = np.zeros((len(self.list_flexo_tensors), len(selected_indices)))
-            for idx, tensor in enumerate(self.list_flexo_tensors):
+            plot_data = np.zeros((len(cleaned_flexo_tensors), len(selected_indices)))
+            for idx, tensor in enumerate(cleaned_flexo_tensors):
                 flat_tensor = (
                     tensor.flatten()
                 )  # Flatten the tensor from left to right, top to bottom
@@ -255,7 +299,7 @@ class Perturbations(FlpzCore):
 
             for i in range(len(selected_indices)):
                 ax.plot(
-                    self.list_amps,
+                    cleaned_amps,
                     plot_data[:, i],
                     linestyle=":",
                     marker="o",
@@ -284,7 +328,7 @@ class Perturbations(FlpzCore):
 
             # Save the plot if required
             if save_plot:
-                plt.savefig(f"{filename}_relaxed", bbox_inches="tight")
+                plt.savefig(f"{filename}_flexo.png", bbox_inches="tight")
                 print(f"Plot saved as {filename} in {os.getcwd()}")
 
             # Show the plot
@@ -295,9 +339,11 @@ class Perturbations(FlpzCore):
                 raise ValueError(
                     "Mismatch between x_vec and list of flexoelectric tensors."
                 )
+            
+            cleaned_amps = cleaned_list_piezo_tensors_clamped = self._clean_lists()
 
             # Determine the number of components in the flattened tensor
-            num_components = self.list_piezo_tensors_clamped[0].flatten().size
+            num_components = cleaned_list_piezo_tensors_clamped[0].flatten().size
 
             if component_string == "all":
                 selected_indices = list(range(num_components))
@@ -313,9 +359,9 @@ class Perturbations(FlpzCore):
 
             # Prepare data for plotting
             plot_data_clamped = np.zeros(
-                (len(self.list_piezo_tensors_clamped), len(selected_indices))
+                (len(cleaned_list_piezo_tensors_clamped), len(selected_indices))
             )
-            for idx, tensor in enumerate(self.list_piezo_tensors_clamped):
+            for idx, tensor in enumerate(cleaned_list_piezo_tensors_clamped):
                 flat_tensor = (
                     tensor.flatten()
                 )  # Flatten the tensor from left to right, top to bottom
@@ -326,7 +372,7 @@ class Perturbations(FlpzCore):
 
             for i in range(len(selected_indices)):
                 ax.plot(
-                    self.list_amps,
+                    cleaned_amps,
                     plot_data_clamped[:, i],
                     linestyle=":",
                     marker="o",
@@ -355,10 +401,10 @@ class Perturbations(FlpzCore):
             # Save the plot if required
 
             filename_based = os.path.basename(filename)
-            filename = f"{filename_based}_clamped.png"
+            filename = f"{filename_based}_piezo_clamped.png"
 
             if save_plot:
-                plt.savefig(f"{filename}_relaxed", bbox_inches="tight")
+                plt.savefig(f"{filename}", bbox_inches="tight")
                 print(f"Plot saved as {filename} in {os.getcwd()}")
 
             # Show the plot
@@ -366,11 +412,16 @@ class Perturbations(FlpzCore):
 
             if plot_piezo_relaxed_tensor:
 
+                if len(self.list_amps) != len(self.list_piezo_tensors_relaxed):
+                    raise ValueError("The length of the amplitude array and piezo tensor relaxed array must be the same!")
+                
+                cleaned_amps, cleaned_list_piezo_tensors_relaxed = self._clean_lists(self.list_amps, self.list_piezo_tensors_relaxed)
+
                 # Prepare data for plotting
                 plot_data_relaxed = np.zeros(
                     (len(self.list_piezo_tensors_relaxed), len(selected_indices))
                 )
-                for idx, tensor in enumerate(self.list_piezo_tensors_relaxed):
+                for idx, tensor in enumerate(cleaned_list_piezo_tensors_relaxed):
                     flat_tensor = (
                         tensor.flatten()
                     )  # Flatten the tensor from left to right, top to bottom
@@ -381,7 +432,7 @@ class Perturbations(FlpzCore):
 
                 for i in range(len(selected_indices)):
                     ax.plot(
-                        self.list_amps,
+                        cleaned_amps,
                         plot_data_relaxed[:, i],
                         linestyle=":",
                         marker="o",
@@ -410,10 +461,10 @@ class Perturbations(FlpzCore):
                 # Save the plot if required
 
                 filename_based = os.path.basename(filename)
-                filename = f"{filename_based}_relaxed.png"
+                filename = f"{filename_based}_piezo_relaxed.png"
 
                 if save_plot:
-                    plt.savefig(f"{filename}_relaxed", bbox_inches="tight")
+                    plt.savefig(f"{filename}", bbox_inches="tight")
                     print(f"Plot saved as {filename} in {os.getcwd()}")
 
                 # Show the plot
