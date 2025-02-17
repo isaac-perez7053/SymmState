@@ -21,7 +21,8 @@ class EnergyProgram(FlpzCore):
         batch_script_header_file=None,
         symm_prec=0.00001,
         disp_mag=0.001,
-        unstable_threshold=-20
+        unstable_threshold=-20, 
+        piezo_calculation=False
     ):
         # Correctly initialize superclass
         super().__init__(name=name, num_datapoints=num_datapoints, abi_file=abi_file, min_amp=min_amp, max_amp=max_amp)
@@ -36,6 +37,7 @@ class EnergyProgram(FlpzCore):
         self.symm_prec = symm_prec
         self.disp_mag = disp_mag
         self.unstable_threshold = unstable_threshold
+        self.piezo_calculation=piezo_calculation
 
     def run_program(self):
         # Ensure you're accessing inherited attributes correctly
@@ -121,11 +123,24 @@ class EnergyProgram(FlpzCore):
 
                 self.__perturbations.append(perturbations)
                 perturbations.generate_perturbations()
-                perturbations.calculate_flexo_of_perturbations()
+                
+                # Check whether or not to run just piezoelectric calculation    
+                if self.piezo_calculation:
+                    perturbations.calculate_piezo_of_perturbations()
+                else:
+                    perturbations.calculate_flexo_of_perturbations()
+                    perturbations.data_analysis(save_plot=True, filename=f"flexo_vs_amplitude_{i}", flexo=True)
+                    print("\n")
+                    print(f"Flexoelectric tensors of unstable Phonon {i} \n {perturbations.list_flexo_tensors} \n")
+
+
+                # Printing relevant information
                 print(f"Amplitudes of Unstable Phonon {i}: {perturbations.list_amps} \n")
                 print(f"Energies of Unstable Phonon {i}: {perturbations.list_energies} \n")
-                print(f"Flexoelectric tensors of unstable Phonon {i}")
-                perturbations.data_analysis(save_plot=True, filename=f"flexo_vs_amplitude_{i}", flexo=True)
+                print(f"Piezoelectric tensors of unstable, \n")
+                print(f"Printing clamped tensors,  {perturbations.list_piezo_tensors_clamped} \n")
+                print(f"Printing relaxed tensors, {perturbations.list_piezo_tensors_relaxed} \n")
+                perturbations.data_analysis(save_plot=True, filename=f"piezo_relaxed_vs_amplitude_{i}", piezo=True, plot_piezo_relaxed_tensor=True)
                 perturbations.data_analysis(save_plot=True, filename=f"energy_vs_amplitude_{i}")
 
         ascii_string_4 = """
