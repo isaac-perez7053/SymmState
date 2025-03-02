@@ -113,7 +113,7 @@ class ElectroTensorProgram(FlpzCore):
                 perturbations = Perturbations(
                     name=self.name,
                     num_datapoints=self.num_datapoints,
-                    abi_file=self.abi_file,
+                    abi_file=smodes_file.abinit_file,
                     min_amp=self.min_amp,
                     max_amp=self.max_amp,
                     perturbation=pert,

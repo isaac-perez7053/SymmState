@@ -322,7 +322,7 @@ Flexo electric calculation of the file {perturbation_object.file_name}
             # Finally, do this for the flexoelectric tensors
             cleaned_amps, cleaned_flexo_tensors = self._clean_lists(self.list_amps, self.list_flexo_tensors)
             if cleaned_flexo_tensors:
-                f.write(f"List of Flexo Amplitudes: {cleaned_amps}")
+                f.write(f"\n List of Flexo Amplitudes: {cleaned_amps}")
                 f.write(f"List of Flexo Electric Tensors: \n")
                 for tensor in cleaned_flexo_tensors:
                     f.write(f"{tensor} \n \n")
