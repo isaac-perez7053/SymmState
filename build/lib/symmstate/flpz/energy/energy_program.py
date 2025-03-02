@@ -2,7 +2,7 @@ from symmstate.flpz.smodes_processor import SmodesProcessor
 from symmstate.flpz.perturbations import Perturbations
 from symmstate.flpz import FlpzCore
 
-class ElectroTensorProgram(FlpzCore):
+class EnergyProgram(FlpzCore):
     """
     Energy subclass inheriting from flpz.
     """
@@ -21,8 +21,7 @@ class ElectroTensorProgram(FlpzCore):
         batch_script_header_file=None,
         symm_prec=0.00001,
         disp_mag=0.001,
-        unstable_threshold=-20, 
-        piezo_calculation=False
+        unstable_threshold=-20,
     ):
         # Correctly initialize superclass
         super().__init__(name=name, num_datapoints=num_datapoints, abi_file=abi_file, min_amp=min_amp, max_amp=max_amp)
@@ -37,7 +36,6 @@ class ElectroTensorProgram(FlpzCore):
         self.symm_prec = symm_prec
         self.disp_mag = disp_mag
         self.unstable_threshold = unstable_threshold
-        self.piezo_calculation=piezo_calculation
 
     def run_program(self):
         # Ensure you're accessing inherited attributes correctly
@@ -48,18 +46,12 @@ class ElectroTensorProgram(FlpzCore):
  ___) | |_| | | | | | | | | | | \__ \ || (_| | ||  __/
 |____/ \__, |_| |_| |_|_| |_| |_|___/\__\__,_|\__\___|
        |___/                                          
- _____ _           _           _____                         
-| ____| | ___  ___| |_ _ __ __|_   _|__ _ __  ___  ___  _ __ 
-|  _| | |/ _ \/ __| __| '__/ _ \| |/ _ \ '_ \/ __|/ _ \| '__|
-| |___| |  __/ (__| |_| | | (_) | |  __/ | | \__ \ (_) | |   
-|_____|_|\___|\___|\__|_|  \___/|_|\___|_| |_|___/\___/|_|   
-                                                             
- ____                                      
-|  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___  
-| |_) | '__/ _ \ / _` | '__/ _` | '_ ` _ \ 
-|  __/| | | (_) | (_| | | | (_| | | | | | |
-|_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_|
-                 |___/                                                      
+ _____                              ____                                       
+| ____|_ __   ___ _ __ __ _ _   _  |  _ \ _ __ ___   __ _ _ __ __ _ _ __ ___   
+|  _| | '_ \ / _ \ '__/ _` | | | | | |_) | '__/ _ \ / _` | '__/ _` | '_ ` _ \  
+| |___| | | |  __/ | | (_| | |_| | |  __/| | | (_) | (_| | | | (_| | | | | | | 
+|_____|_| |_|\___|_|  \__, |\__, | |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_| 
+                      |___/ |___/                   |___/                                        
 """
         print(f"{ascii_string_1} \n")
         smodes_file = SmodesProcessor(
@@ -84,7 +76,7 @@ class ElectroTensorProgram(FlpzCore):
         print(f"Printing DynFreqs: \n \n {smodes_file.dyn_freqs} \n")
 
         print(f"normalized unstable phonons: \n \n {normalized_phonon_vecs} \n")
-        if not normalized_phonon_vecs:
+        if len(normalized_phonon_vecs) == 0:
             print("No unstable phonons were found")
         else:
             ascii_string_3 = """
@@ -94,18 +86,12 @@ class ElectroTensorProgram(FlpzCore):
 | |__| (_| | | (__| |_| | | (_| | |_| | | | | (_| |
  \____\__,_|_|\___|\__,_|_|\__,_|\__|_|_| |_|\__, |
                                              |___/ 
- _____ _                     _           _        _      
-|  ___| | _____  _____   ___| | ___  ___| |_ _ __(_) ___ 
-| |_  | |/ _ \ \/ / _ \ / _ \ |/ _ \/ __| __| '__| |/ __|
-|  _| | |  __/>  < (_) |  __/ |  __/ (__| |_| |  | | (__ 
-|_|   |_|\___/_/\_\___/ \___|_|\___|\___|\__|_|  |_|\___|
-                                                         
- _____                             
-|_   _|__ _ __  ___  ___  _ __ ___ 
-  | |/ _ \ '_ \/ __|/ _ \| '__/ __|
-  | |  __/ | | \__ \ (_) | |  \__ \ 
-  |_|\___|_| |_|___/\___/|_|  |___/
-                                   
+ _____                      _           
+| ____|_ __   ___ _ __ __ _(_) ___  ___ 
+|  _| | '_ \ / _ \ '__/ _` | |/ _ \/ __|
+| |___| | | |  __/ | | (_| | |  __/\__ \ 
+|_____|_| |_|\___|_|  \__, |_|\___||___/
+                      |___/           
 """
             print(f"{ascii_string_3} \n")
 
@@ -123,27 +109,9 @@ class ElectroTensorProgram(FlpzCore):
 
                 self.__perturbations.append(perturbations)
                 perturbations.generate_perturbations()
-                
-                # Check whether or not to run just piezoelectric calculation    
-                if self.piezo_calculation:
-                    perturbations.calculate_piezo_of_perturbations()
-                else:
-                    perturbations.calculate_flexo_of_perturbations()
-                    perturbations.data_analysis(save_plot=True, filename=f"flexo_vs_amplitude_{i}", flexo=True)
-                    print("\n")
-                    print(f"Flexoelectric tensors of unstable Phonon {i} \n {perturbations.list_flexo_tensors} \n")
-
-                # Record relevant data into file
-                data_file_name = f"data_file_{i}.txt"
-                perturbations.record_data(data_file_name)
-
-                # Printing relevant information
+                perturbations.calculate_energy_of_perturbations()
                 print(f"Amplitudes of Unstable Phonon {i}: {perturbations.list_amps} \n")
                 print(f"Energies of Unstable Phonon {i}: {perturbations.list_energies} \n")
-                print(f"Piezoelectric tensors of unstable, \n")
-                print(f"Printing clamped tensors,  {perturbations.list_piezo_tensors_clamped} \n")
-                print(f"Printing relaxed tensors, {perturbations.list_piezo_tensors_relaxed} \n")
-                perturbations.data_analysis(save_plot=True, filename=f"piezo_relaxed_vs_amplitude_{i}", piezo=True, plot_piezo_relaxed_tensor=True)
                 perturbations.data_analysis(save_plot=True, filename=f"energy_vs_amplitude_{i}")
 
         ascii_string_4 = """

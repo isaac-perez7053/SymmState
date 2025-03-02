@@ -100,7 +100,7 @@ class SlurmFile(SymmStateCore):
         # If none of the jobs were found in the queue, they have all finished
         return True
 
-    def wait_for_jobs_to_finish(self, check_time=60):
+    def wait_for_jobs_to_finish(self, check_time=60, check_once=False):
         """
         Waits until all computational jobs are finished, checking their status periodically.
 
@@ -108,8 +108,11 @@ class SlurmFile(SymmStateCore):
             check_time (int): Time interval between checks, in seconds. Defaults to 60.
         """
         print("Waiting for jobs to finish...")
-        while not self.all_jobs_finished():
-            print(f"Jobs still running. Checking again in {check_time} seconds...")
+        if check_once:
             time.sleep(check_time)
-        print("All jobs have finished.")
-        self.running_jobs = []
+        else:
+            while not self.all_jobs_finished():
+                print(f"Jobs still running. Checking again in {check_time} seconds...")
+                time.sleep(check_time)
+            print("All jobs have finished.")
+            self.running_jobs = []

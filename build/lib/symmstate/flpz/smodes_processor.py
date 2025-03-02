@@ -13,9 +13,6 @@ import tracemalloc
 
 tracemalloc.start()
 
-# Just for now in the meantime until I can fix freq_thz
-np.seterr(all='ignore') 
-
 
 # Ultimate TODO: Port SmodesProcessor into the programs section and plan for it to be ran by other programs
 class SmodesProcessor(FlpzCore):
@@ -303,7 +300,7 @@ chkprim 0
                 "The numerical instability of the force constants matrix is high and may affect the reliability of its eigenvalues"
             )
 
-        fc_evals, FCevecs_SAM = np.linalg.eig(fc_mat)
+        fc_evals, _ = np.linalg.eig(fc_mat)
 
         # Construct the dyn_mat matrix
         ###############################
@@ -330,24 +327,36 @@ chkprim 0
         print("Absolute eigenvalues:", np.absolute(dynevals))
 
 
-        eV_to_J=1.602177E-19
-        ang_to_m=1.0E-10
-        AMU_to_kg=1.66053E-27
-        c= 2.9979458E10 #speed of light
+        eV_to_J = 1.602177e-19
+        ang_to_m = 1.0e-10
+        AMU_to_kg = 1.66053e-27
+        c = 2.9979458e10
 
-        freq_thz=np.multiply(np.sign(dynevals), np.sqrt(np.absolute(dynevals)*eV_to_J/(ang_to_m**2*AMU_to_kg))*1.0E-12)
-        fc_eval=np.multiply(np.sign(fc_evals), np.sqrt(np.absolute(fc_evals)))
+        intermediate_steps = np.sqrt(np.absolute(dynevals) * eV_to_J / (ang_to_m**2 * AMU_to_kg * 10e46)) * 10e-23
+        print("Frequency calculation intermediate steps:", intermediate_steps)
+
         # min_eigenvalue = 1e-10  # You can adjust this threshold as needed
 
+        # dynevals_positive = np.where(dynevals > min_eigenvalue, dynevals, 0)
+
+        # Further calculations
+        freq_thz = np.multiply(
+            np.sign(dynevals),
+            intermediate_steps * 1.0e-12,
+        )
+
+        fc_eval = np.multiply(np.sign(fc_evals), np.sqrt(np.absolute(fc_evals)))
 
         print(f"DEBUG: Printing freq_thz: \n {freq_thz} \n ")
 
         idx_dyn = np.flip(freq_thz.argsort()[::-1])
 
+        print(f"DEBUG: Printing idx_dyn, \n {idx_dyn} \n")
+
         freq_thz = freq_thz[idx_dyn] / (2 * np.pi)
         dynevecs_sam = dynevecs_sam[:, idx_dyn]
 
-        freq_cm = freq_thz * 1.0E12 /(c)
+        freq_cm = freq_thz * 1.0e12 / c
 
         print(f"Printing frequency in wavenumbers: {freq_cm}")
 
@@ -414,15 +423,9 @@ chkprim 0
         negative_indicies = []
         print(f"DEBUG: Printing phonons: \n {self.phonon_vecs} \n")
         # Iterate over dyn_freqs to check the first element of each sublist
-
-        # Will have to use this method of detecting instabilities until I fix freq calc. 
-        for index, fc_eval in enumerate(self.fc_evals):
-            if fc_eval < self.unstable_threshold:
+        for index, (_, freq_thz) in enumerate(self.dyn_freqs):
+            if freq_thz < self.unstable_threshold:
                 negative_indicies.append(index)
-
-        # for index, (_, freq_cm) in enumerate(self.dyn_freqs):
-        #     if freq_cm < self.unstable_threshold:
-        #         negative_indicies.append(index)
 
         # Return the list of indicies or False if none are negative
         print(

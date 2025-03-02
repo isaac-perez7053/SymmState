@@ -84,7 +84,7 @@ class ElectroTensorProgram(FlpzCore):
         print(f"Printing DynFreqs: \n \n {smodes_file.dyn_freqs} \n")
 
         print(f"normalized unstable phonons: \n \n {normalized_phonon_vecs} \n")
-        if not normalized_phonon_vecs:
+        if len(normalized_phonon_vecs) == 0:
             print("No unstable phonons were found")
         else:
             ascii_string_3 = """
@@ -103,7 +103,7 @@ class ElectroTensorProgram(FlpzCore):
  _____                             
 |_   _|__ _ __  ___  ___  _ __ ___ 
   | |/ _ \ '_ \/ __|/ _ \| '__/ __|
-  | |  __/ | | \__ \ (_) | |  \__ \ 
+  | |  __/ | | \__ \ (_) | |  \__ \
   |_|\___|_| |_|___/\___/|_|  |___/
                                    
 """
@@ -133,9 +133,6 @@ class ElectroTensorProgram(FlpzCore):
                     print("\n")
                     print(f"Flexoelectric tensors of unstable Phonon {i} \n {perturbations.list_flexo_tensors} \n")
 
-                # Record relevant data into file
-                data_file_name = f"data_file_{i}.txt"
-                perturbations.record_data(data_file_name)
 
                 # Printing relevant information
                 print(f"Amplitudes of Unstable Phonon {i}: {perturbations.list_amps} \n")

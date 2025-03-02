@@ -180,7 +180,7 @@ class AbinitFile(AbinitUnitCell, SlurmFile):
   tolwfr2 1.0D-18       # tight convergence on wavefunction residuals
 """
 
-        self.write_custom_abifile(output_file=output_path, header_file=content)
+        self.write_custom_abifile(output_file=output_path, content=content)
 
     def write_phonon_dispersion_file(self, output_path):
         """
@@ -231,13 +231,7 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
    prtpot 1
    prteig 0
 """
-        self.write_custom_abifile(output_file=output_path, header_file=content)
-
-    def create_mrgddb_file(self, content):
-        pass
-
-    def create_anaddb_file(self, content):
-        pass
+        self.write_custom_abifile(output_file=output_path, content=content)
 
     # ----------------------
     # File Execution Methods
@@ -271,7 +265,6 @@ iqpt: 5 iqpt+ 1   #automatically iterate through the q pts
 {input_file}_gen_output
 {input_file}_temp
     """
-
         if batch_script_header_file is not None:
             # Create a non-temporary file in the current directory
             file_path = f"{input_file}_abinit_input_data.txt"
@@ -372,12 +365,12 @@ kptopt 2  # Takes into account time-reversal symmetry.
         working_directory = os.getcwd()
 
         # Construct the full paths for the output and batch files
-        output_file = os.path.join(working_directory, f"{self.file_name}_energy")
+        output_file = os.path.join(working_directory, f"{self.file_name}_piezo")
         batch_name = os.path.join(working_directory, f"{self.file_name}_bscript")
 
         # Use these paths in your methods
         self.write_custom_abifile(
-            output_file=output_file, header_file=content, toldfe=False
+            output_file=output_file, content=content, coords_are_cartesian=False
         )
         self.run_abinit(
             input_file=output_file,
@@ -448,12 +441,12 @@ kptopt 2  # Takes into account time-reversal symmetry.
         working_directory = os.getcwd()
 
         # Construct the full paths for the output and batch files
-        output_file = os.path.join(working_directory, f"{self.file_name}_energy")
+        output_file = os.path.join(working_directory, f"{self.file_name}_flexo")
         batch_name = os.path.join(working_directory, f"{self.file_name}_bscript")
 
         # Use these paths in your methods
         self.write_custom_abifile(
-            output_file=output_file, header_file=content, toldfe=False
+            output_file=output_file, content=content, coords_are_cartesian=False
         )
         self.run_abinit(
             input_file=output_file,
@@ -506,24 +499,25 @@ kptopt 2  # Takes into account time-reversal symmetry.
             log=f"{output_file}.log"
         )
 
-    def run_anaddb_file(self, flexo=False, peizo=False):
+    # Implement this function like I did with anaddb
+    def run_anaddb_file(self, ddb_file, content="" ,flexo=False, peizo=False):
         if flexo:
-            content = """
+            content_f = """
 ! anaddb calculation of flexoelectric tensor
 
 flexoflag 1
 """
-            files_content = f"""
-{self.file_name}_flexo_anaddb.abi
+            files_content = f"""{self.file_name}_flexo_anaddb.abi
 {self.file_name}_flexo_output
-{self.file_name}o_DS5_DDB
+{ddb_file}
 dummy1
 dummy2
 dummy3
+dummy4
 """
             # Write all content to the output file
             with open(f"{self.file_name}_flexo_anaddb.abi", "w") as outf:
-                outf.write(content)
+                outf.write(content_f)
             
             with open(f"{self.file_name}_flexo_anaddb.files", "w") as outff:
                 outff.write(files_content)
@@ -542,7 +536,7 @@ dummy3
             return f"{self.file_name}_flexo_output"
 
         elif peizo:
-            content = """
+            content_p = """
 ! Input file for the anaddb code
 
 elaflag 3  ! flag for the elastic constant
@@ -552,14 +546,14 @@ instrflag 1 ! the flag for the internal strain tensor
             files_content = f"""
 {self.file_name}_piezo_anaddb.abi
 {self.file_name}_piezo_output
-{self.file_name}o_DS4_DDB
+{ddb_file}
 dummy1
 dummy2
 dummy3
 """
             # Write all content to the output file
             with open(f"{self.file_name}_piezo_anaddb.abi", "w") as outf:
-                outf.write(content)
+                outf.write(content_p)
             
             with open(f"{self.file_name}_piezo_anaddb.files", "w") as outff:
                 outff.write(files_content)
@@ -577,13 +571,46 @@ dummy3
             # Return the name of the output file 
             return f"{self.file_name}_piezo_output"
 
+# TODO: Below is what the anaddb function should be. The above can be implemented into Perturbations.py
         else: 
-            return
+            # Write all content to the output file
+            with open(f"{self.file_name}_anaddb.abi", "w") as outf:
+                outf.write(content)
+
+            # Execute anaddb directly through the terminal
+            command = f"anaddb < {self.file_name}_anaddb.files > {self.file_name}_anaddb.log"
+
+            try:
+                # Run the command
+                subprocess.run(command, shell=True, check=True)
+                print(f"Command executed successfully: {command}")
+            except subprocess.CalledProcessError as e:
+                print(f"An error occurred while executing the command: {e}")
+            
             
         
 
+
+
     def run_mrgddb_file(self, content):
-        pass
+        # Write all content to the output file
+        with open(f"{self.file_name}_mrgddb.in", "w") as outf:
+            outf.write(content)
+        
+        # Execute mrgddb directly through the terminal
+        command = f"mrgddb < {self.file_name}_mrgddb.in"
+        
+        try:
+            # Run the command and capture stdout and stderr
+            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print(f"Command executed successfully: {command}")
+            print(f"Output: {result.stdout.decode()}")  # Decode and print output
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred while executing the command: {e}")
+            print(f"Error output: {e.stderr.decode()}")  # Print the error output if any
+
+
+
 
     # ---------------------------------
     # File Extraction methods

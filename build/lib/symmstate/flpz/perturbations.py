@@ -156,27 +156,10 @@ class Perturbations(FlpzCore):
             # Extract energy and piezoelectric properties 
             self.abinit_file.wait_for_jobs_to_finish(check_time=300)
 
-            # Run mrgddb on datasets
-            mrgddb_output_files = []
-            for perturbation_object in self.perturbed_objects:
-            
-                output_file = f"{perturbation_object.file_name}_mrgddb_output"
-                content = f"""{output_file}
-Piezo electric calculation of the file {perturbation_object.file_name} 
-2
-{perturbation_object.file_name}_piezo_gen_output_DS1_DDB
-{perturbation_object.file_name}_piezo_gen_output_DS4_DDB
-"""
-                perturbation_object.run_mrgddb_file(content)
-                mrgddb_output_files.append(output_file)
-            
-            # Small wait to ensure mrgddb has ran
-            self.abinit_file.wait_for_jobs_to_finish(check_time=60, check_once=True)
-
             # Run anaddb jobs on all piezoelectric files
             anaddb_piezo_files = []
-            for i, pertrubation_object_piezo in enumerate(self.perturbed_objects):
-                anaddb_file_name = pertrubation_object_piezo.run_anaddb_file(mrgddb_output_files[i], piezo=True)
+            for pertrubation_object_piezo in self.perturbed_objects:
+                anaddb_file_name = pertrubation_object_piezo.run_anaddb_file(piezo=True)
                 anaddb_piezo_files.append(anaddb_file_name)
             
             # Small wait to ensure anaddb is finished
@@ -184,7 +167,7 @@ Piezo electric calculation of the file {perturbation_object.file_name}
                 
             # Collect data
             for i, perturbation_object in enumerate(self.perturbed_objects):
-                perturbation_object.grab_energy(f"{perturbation_object.file_name}_{i}_piezo.abo")
+                perturbation_object.grab_energy(f"{perturbation_object.file_name}_energy.abo")
                 perturbation_object.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i])
                 self.list_energies.append(perturbation_object.energy)
                 self.list_piezo_tensors_clamped.append(
@@ -216,28 +199,10 @@ Piezo electric calculation of the file {perturbation_object.file_name}
         # Wait for flexoelec jobs to finish
         self.abinit_file.wait_for_jobs_to_finish(check_time=600)
 
-        # Run mrgddb on datasets
-        mrgddb_output_files = []
-        for perturbation_object in self.perturbed_objects:
-           
-            output_file = f"{perturbation_object.file_name}_mrgddb_output"
-            content = f"""{output_file}
-Flexo electric calculation of the file {perturbation_object.file_name} 
-3
-{perturbation_object.file_name}_flexo_gen_output_DS1_DDB
-{perturbation_object.file_name}_flexo_gen_output_DS4_DDB
-{perturbation_object.file_name}_flexo_gen_output_DS5_DDB
-"""
-            perturbation_object.run_mrgddb_file(content)
-            mrgddb_output_files.append(output_file)
-        
-         # Small wait to ensure mrgddb has ran
-        self.abinit_file.wait_for_jobs_to_finish(check_time=60, check_once=True)
-
         # Run anaddb jobs on all flexoelectric files
         anaddb_flexo_files = []
-        for i, perturbation_object in enumerate(self.perturbed_objects):
-            anaddb_file_name = perturbation_object.run_anaddb_file(mrgddb_output_files[i], flexo=True)
+        for perturbation_object in self.perturbed_objects:
+            anaddb_file_name = perturbation_object.run_anaddb_file(flexo=True)
             anaddb_flexo_files.append(anaddb_file_name)
         
         # Small wait to ensure anaddb has ran
@@ -245,8 +210,8 @@ Flexo electric calculation of the file {perturbation_object.file_name}
 
         # Run anaddb jobs on all piezoelectric files
         anaddb_piezo_files = []
-        for i, perturbation_object in enumerate(self.perturbed_objects):
-            anaddb_file_name = perturbation_object.run_anaddb_file(mrgddb_output_files[i], peizo=True)
+        for perturbation_object in self.perturbed_objects:
+            anaddb_file_name = perturbation_object.run_anaddb_file(peizo=True)
             anaddb_piezo_files.append(anaddb_file_name)
         
         # Small wait to ensure anaddb has ran
@@ -254,7 +219,7 @@ Flexo electric calculation of the file {perturbation_object.file_name}
 
         # Collect data
         for i, perturbation_object in enumerate(self.perturbed_objects):
-            perturbation_object.grab_energy(f"{perturbation_object.file_name}_{i}_flexo.abo")
+            perturbation_object.grab_energy(f"{perturbation_object.file_name}_energy.abo")
             perturbation_object.grab_flexo_tensor(anaddb_file=anaddb_flexo_files[i])
             perturbation_object.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i])
             self.list_energies.append(perturbation_object.energy)
@@ -278,56 +243,14 @@ Flexo electric calculation of the file {perturbation_object.file_name}
         for i, tensor in enumerate(to_be_cleaned_list):
             if tensor is not None:
                 # If tensor is not None, append it and the corresponding amp to the cleaned lists
-                cleaned_amps.append(amps[i])
+                cleaned_amps.append(cleaned_amps[i])
                 cleaned_list.append(tensor)
 
         # Output the cleaned lists
         return cleaned_amps, cleaned_list
 
 
-    """
-    Function used to record data into a file for future use
-    """
-    def record_data(self, data_file):
-        with open(data_file, "w") as f: 
-            # Recording Data
-            f.write("Data File \n")
-
-            f.write("Printing Basic Cell File Name: \n")
-            f.write(f"{self.abi_file} \n \n")
-        
-
-            f.write("Perturbation Associated with Run: \n")
-            f.write(f"{self.pert} \n \n")
-
-            f.write(f"List of Amplitudes: {self.list_amps} \n")
-            f.write(f"List of Energies: {self.list_energies} \n \n")
-
-            # Grab cleaned amplitudes and tensors
-            cleaned_amps, cleaned_piezo_tensors_clamped = self._clean_lists(self.list_amps, self.list_piezo_tensors_clamped)
-            if cleaned_piezo_tensors_clamped:
-                f.write(f"List of Clamped Piezo Amplitudes: {cleaned_amps} \n")
-                f.write(f"List of Clamped Piezo Electric Tensors: \n")
-                for tensor in cleaned_piezo_tensors_clamped:
-                    f.write(f"{tensor}  \n \n")
-
-            # Grab cleaned tensors again 
-            cleaned_amps, cleaned_piezo_tensors_relaxed = self._clean_lists(self.list_amps, self.list_piezo_tensors_relaxed)
-            if cleaned_piezo_tensors_relaxed:
-                f.write(f"List of Relaxed Piezo Amplitdues: {cleaned_amps} \n")
-                f.write(f"List of Relaxed Piezo Electric Tensors: \n")
-                for tensor in cleaned_piezo_tensors_relaxed:
-                    f.write(f"{tensor} \n \n")
-
-            # Finally, do this for the flexoelectric tensors
-            cleaned_amps, cleaned_flexo_tensors = self._clean_lists(self.list_amps, self.list_flexo_tensors)
-            if cleaned_flexo_tensors:
-                f.write(f"List of Flexo Amplitudes: {cleaned_amps}")
-                f.write(f"List of Flexo Electric Tensors: \n")
-                for tensor in cleaned_flexo_tensors:
-                    f.write(f"{tensor} \n \n")
-
-
+    # TODO: this function is not finised
     def data_analysis(
         self,
         piezo=False,
@@ -403,11 +326,11 @@ Flexo electric calculation of the file {perturbation_object.file_name}
 
             # Set axis limits as requested
             ax.set_xlim(0, self.max_amp)
-            ax.set_ylim(np.min(plot_data), np.max(plot_data))
+            ax.set_ylim(0, np.max(plot_data))
 
             # Add grid, legend, and adjust layout
             ax.grid(True)
-            # ax.legend(loc="best", fontsize=12)
+            ax.legend(loc="best", fontsize=12)
             ax.tick_params(axis="both", which="major", labelsize=14)
 
 
@@ -476,13 +399,15 @@ Flexo electric calculation of the file {perturbation_object.file_name}
 
             # Set axis limits as requested
             ax.set_xlim(0, self.max_amp)
-            ax.set_ylim(np.min(plot_data_clamped), np.max(plot_data_clamped))
+            ax.set_ylim(0, np.max(plot_data_clamped))
 
             # Add grid, legend, and adjust layout
             ax.grid(True)
-            # ax.legend(loc="best", fontsize=12)
+            ax.legend(loc="best", fontsize=12)
             ax.tick_params(axis="both", which="major", labelsize=14)
 
+            # Adjust layout
+            plt.tight_layout(pad=0.5)
 
             # Save the plot if required
 
@@ -534,7 +459,7 @@ Flexo electric calculation of the file {perturbation_object.file_name}
 
                 # Set axis limits as requested
                 ax.set_xlim(0, self.max_amp)
-                ax.set_ylim(np.min(plot_data_relaxed), np.max(plot_data_relaxed))
+                ax.set_ylim(0, np.max(plot_data_relaxed))
 
                 # Add grid, legend, and adjust layout
                 ax.grid(True)
