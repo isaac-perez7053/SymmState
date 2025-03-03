@@ -35,3 +35,6 @@ class FlpzCore(SymmStateCore):
         self.abi_file = str(abi_file)
         self.min_amp = float(min_amp)
         self.max_amp = float(max_amp)
+
+    def update_abinit_file(self, new_file):
+        self.abi_file = self.get_new_file_path(self.abi_file, new_file)

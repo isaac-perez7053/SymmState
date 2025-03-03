@@ -95,6 +95,9 @@ class EnergyProgram(FlpzCore):
 """
             print(f"{ascii_string_3} \n")
 
+            # Update abinit file to smodes file
+            self.update_abinit_file("dist_0.abi")
+
             for i, pert in enumerate(normalized_phonon_vecs):
                 perturbations = Perturbations(
                     name=self.name,

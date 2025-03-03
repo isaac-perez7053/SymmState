@@ -109,11 +109,14 @@ class ElectroTensorProgram(FlpzCore):
 """
             print(f"{ascii_string_3} \n")
 
+            # Update the abi file to the new smodes abi file
+            self.update_abinit_file("dist_0.abi")
+
             for i, pert in enumerate(normalized_phonon_vecs):
                 perturbations = Perturbations(
                     name=self.name,
                     num_datapoints=self.num_datapoints,
-                    abi_file=smodes_file.abinit_file,
+                    abi_file=self.abi_file,
                     min_amp=self.min_amp,
                     max_amp=self.max_amp,
                     perturbation=pert,
