@@ -40,6 +40,14 @@ class SymmStateCore:
         return package_dir, rel_path_to_package
     
     @staticmethod
+    def find_package_path(package_name='symmstate'):
+        """Finds and returns the package path using importlib."""
+        spec = importlib.util.find_spec(package_name)
+        if spec is None:
+            raise ImportError(f"Cannot find package {package_name}")
+        return spec.submodule_search_locations[0]
+    
+    @staticmethod
     def upload_files_to_package(*files, dest_folder_name):
         """Uploads files to a specified directory within a package from a single input string."""
 
