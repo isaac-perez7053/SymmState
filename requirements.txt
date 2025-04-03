@@ -1,0 +1,12 @@
+# Core
+pymatgen>=2023.7.20
+numpy>=1.21
+scipy>=1.7
+jinja2>=3.0
+pyyaml>=6.0
+fireworks>=1.9
+pydantic>=1.9
+
+# Optional
+tensorflow>=2.8; sys_platform != 'win32'
+torch>=1.11; sys_platform != 'win32'

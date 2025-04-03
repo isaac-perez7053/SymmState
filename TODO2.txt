@@ -1,0 +1,133 @@
+Best way to store abinit stuff: 
+
+Structured Parameter Class (Pydantic Model)
+
+from pydantic import BaseModel, validator
+from typing import Dict, Optional
+
+class AbinitConfig(BaseModel):
+    """Core parameters with validation"""
+    # Basic Control
+    ecut: float  # Mandatory
+    nstep: int = 100
+    toldfe: Optional[float] = 1e-8
+    tolvrs: Optional[float] = None
+    
+    # Physical System
+    diemac: float = 4.0
+    ixc: int = 7  # PBE default
+    
+    # Execution Control
+    paral_kgb: int = 1
+    timopt: int = -3
+
+    # Validation rules
+    @validator('ixc', pre=True)
+    def validate_ixc(cls, v):
+        if v not in [1, 2, 7, 11, 17]:
+            raise ValueError(f"Unsupported ixc value: {v}")
+        return v
+
+    @validator('toldfe', 'tolvrs', always=True)
+    def check_convergence(cls, v, values):
+        if v is None and values.get('toldfe') is None:
+            raise ValueError("Must set either toldfe or tolvrs")
+        return v
+
+Template System with Jinja2
+
+# templates/base.jinja
+{% block header %}# Basic Abinit Input File
+{% if config.ecut %}ecut {{ config.ecut }}{% endif %}
+{% if config.nstep %}nstep {{ config.nstep }}{% endif %}
+{% endblock %}
+
+{% block unit_cell %}# --------------------------
+# Unit Cell Definition
+# --------------------------
+acell {{ unit_cell.acell|join(' ') }}
+rprim
+{% for vec in unit_cell.rprim %}{{ "%12.8f %12.8f %12.8f"|format(vec[0], vec[1], vec[2]) }}
+{% endfor %}
+xred
+{% for coord in unit_cell.frac_coords %}{{ "%12.8f %12.8f %12.8f"|format(coord[0], coord[1], coord[2]) }}
+{% endfor %}
+natom {{ unit_cell.natom }}
+ntypat {{ unit_cell.ntypat }}
+znucl {{ unit_cell.znucl|join(' ') }}
+typat {{ unit_cell.typat|join(' ') }}
+{% endblock %}
+
+{% block custom_sections %}{% endblock %}
+
+File Generator Class
+
+from jinja2 import Environment, PackageLoader, select_autoescape
+
+class AbinitFileGenerator:
+    def __init__(self, unit_cell: UnitCell):
+        self.env = Environment(
+            loader=PackageLoader("symmstate", "templates"),
+            autoescape=select_autoescape()
+        )
+        self.unit_cell = unit_cell
+        self.config = AbinitConfig(ecut=30)  # Defaults
+        self.custom_blocks: Dict[str, str] = {}
+
+    def configure(self, **params):
+        """Update structured parameters"""
+        self.config = self.config.copy(update=params)
+
+    def add_custom_block(self, name: str, content: str):
+        """Add raw input sections"""
+        self.custom_blocks[name] = content
+
+    def render(self) -> str:
+        template = self.env.get_template("base.jinja")
+        return template.render(
+            config=self.config.dict(exclude_unset=True),
+            unit_cell=self.unit_cell,
+            custom_sections="\n".join(self.custom_blocks.values())
+        )
+
+Basic Usage (structured)
+
+generator = AbinitFileGenerator(my_unit_cell)
+generator.configure(ecut=40, nstep=200, ixc=11)
+generator.add_custom_block("pseudos", 'pseudos "H.psp8 O.psp8"')
+content = generator.render()
+
+3.2 Present Workflows: 
+
+def phonon_preset(generator):
+    generator.configure(timopt=3, nstep=500)
+    generator.add_custom_block("phonon_params", """
+    optdriver 7   # Phonon calculation
+    nqpt 4 4 4
+    """)
+
+# Usage
+generator = AbinitFileGenerator(my_unit_cell)
+phonon_preset(generator)
+
+3.3 Advanced Customization
+
+generator.configure(ecut=50)
+generator.add_custom_block("expert", """
+# Advanced DFT+U parameters
+dftu 1
+udet 2
+uj 0.5 0.7
+""")
+
+File Structure: 
+
+symmstate/
+├── templates/
+│   ├── base.jinja
+│   ├── phonon.jinja
+│   └── flexo.jinja
+└── abinit/
+    ├── config.py    # Structured parameters
+    ├── generator.py # File generation logic
+    └── presets.py   # Workflow templates

@@ -1,0 +1,2 @@
+[console_scripts]
+symmstate = symmstate.__main__:main

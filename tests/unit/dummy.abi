@@ -1,0 +1,13 @@
+# Simple cubic structure
+acell 1 1 1
+rprim
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+xred
+0.0 0.0 0.0
+0.5 0.5 0.5
+natom 2
+ntypat 1
+znucl 14
+typat 1 1

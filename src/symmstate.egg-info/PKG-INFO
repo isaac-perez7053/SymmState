@@ -1,0 +1,78 @@
+Metadata-Version: 2.4
+Name: symmstate
+Version: 0.1.0
+Summary: Solid-state Physics Package for Symmetry Based Calculations!
+Home-page: https://github.com/yourusername/symmstate
+Author: Isaac Perez
+Author-email: Your Name <your.email@example.com>
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Chemistry
+Classifier: Topic :: Scientific/Engineering :: Physics
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pymatgen>=2023.7.20
+Requires-Dist: numpy>=1.21
+Requires-Dist: scipy>=1.7
+Requires-Dist: jinja2>=3.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: fireworks>=1.9
+Requires-Dist: pydantic>=1.9
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black>=22.3; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Provides-Extra: ml
+Requires-Dist: tensorflow>=2.8; extra == "ml"
+Requires-Dist: torch>=1.11; extra == "ml"
+
+# SymmState
+
+Applications of symmetry in solid state physics 
+
+## Overview
+
+SymmState is a powerful Python package designed to calculate and analyze various symmetry applications within solid-state physics, such as flexoelectric and piezoelectric properties of materials. This package provides seamless interaction with Abinit, allowing users to conduct sophisticated simulations and analyses directly from Python. The package builds off of the many Pymatgen objects for extended functionality. 
+
+## Installation
+
+To install the SymmState package, follow these steps:
+
+1. Clone the repository into a directory (name of directory is arbitrary):
+    ```bash
+    mkdir symmstate_program
+    cd symmstate_program
+    ```
+
+2. Place the `SymmState` package files into the `symmstate_program` directory.
+
+3. Install the package using pip:
+    ```bash
+    pip install .
+    ```
+
+This will install all necessary dependencies for SymmState and make it ready for use.
+
+## Features
+
+- **Symmetry Analysis**: Perform advanced symmetry analysis on solid-state materials.
+- **Flexoelectric Properties**: Calculate flexoelectric properties for various materials and their evolution under particular perturbations.
+- **Piezoelectric Properties**: Evaluate the piezoelectric response of various materials and evolution under particular perturbations.
+- **Abinit Integration**: Interact seamlessly with Abinit for simulations.
+  
+## Future Features
+
+- Extended Abinit interaction and functionality
+- Automation of the calculation of symmetry informed phonon dispersion curves
+- Extended interaction to Vasp through pymatgen
+- Convergence of files using Abinit and Vasp
+
+*More features coming soon!*
+
+---
+
+Feel free to explore and contribute to the development of SymmState as we continue to expand its capabilities for the scientific community interested in solid-state physics.
+
+For any questions or feedback, please don't hesitate to reach out to us at the email isacvillages@gmail.com.

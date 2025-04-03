@@ -1,0 +1,51 @@
+useylm 1  # Use of spherical harmonics
+kptopt 2  # Takes into account time-reversal symmetry.
+
+# Allows the use of cells that are non-primitive
+chkprim 0
+
+#Definition of unit cell
+#***********************
+acell 3*1.0
+xred
+   0.0000000000 0.0000000000 0.0000000000
+   0.5000000000 0.5000000000 0.5000000000
+   0.5000000000 0.5000000000 0.0000000000
+   0.5000000000 0.0000000000 0.5000000000
+   0.0000000000 0.5000000000 0.5000000000
+rprim
+   0.0000000000 7.2546934054 0.0000000000
+   0.0000000000 0.0000000000 7.2546934054
+   7.2546934054 0.0000000000 0.0000000000
+
+#Definition of atoms
+#************************
+natom 5
+ntypat 3
+znucl 20 22 8
+typat 1 2 3*3
+
+#Definition of the planewave basis set
+#*************************************
+ecut 90
+ecutsm 0.5 #Smoothing energy needed for lattice parameter optimization.
+
+#Definition of the k-point grid
+#******************************
+nshiftk 1
+kptrlatt
+-4   4   4
+ 4  -4   4
+ 4   4  -4
+shiftk 0.5 0.5 0.5
+nband 52
+
+#Definition of SCF Procedure
+#***************************
+nstep 50
+diemac 4.0
+ixc -116133    #GGA specified by psuedopotential files
+toldfe 1.0d-10
+
+pp_dirpath "../"
+pseudos "CaRev.psp8, TiRev.psp8, ORev.psp8"

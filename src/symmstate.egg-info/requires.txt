@@ -1,0 +1,17 @@
+pymatgen>=2023.7.20
+numpy>=1.21
+scipy>=1.7
+jinja2>=3.0
+pyyaml>=6.0
+fireworks>=1.9
+pydantic>=1.9
+
+[dev]
+pytest>=7.0
+black>=22.3
+mypy>=0.950
+flake8>=4.0
+
+[ml]
+tensorflow>=2.8
+torch>=1.11
