@@ -2,7 +2,7 @@ import os
 import subprocess
 from pathlib import Path
 import click
-from symmstate.config.settings import settings
+from symmstate.config.settings import Settings
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
 from symmstate.templates.template_manager import TemplateManager
 from symmstate.slurm_file import SlurmFile
@@ -18,12 +18,13 @@ from symmstate.flpz.data_analysis import (
 import click
 import subprocess
 
-# Define the run_smodes function directly here to avoid circular imports.
+# Define the run_smodes function directly in this file to avoid circular imports.
 def run_smodes(smodes_input):
-    from symmstate.config.settings import settings  # local import to avoid circularity
-    if not Path(settings.SMODES_PATH).is_file():
-        raise FileNotFoundError(f"SMODES executable not found at: {settings.SMODES_PATH}")
-    command = f"{settings.SMODES_PATH} < {smodes_input} > output.log"
+    # Local import to avoid circular dependencies.
+    from symmstate.config.settings import Settings
+    if not Path(Settings().SMODES_PATH).is_file():
+        raise FileNotFoundError(f"SMODES executable not found at: {Settings().SMODES_PATH}")
+    command = f"{Settings().SMODES_PATH} < {smodes_input} > output.log"
     process = subprocess.run(command, shell=True, capture_output=True, text=True)
     if process.returncode != 0:
         raise RuntimeError(f"SMODES execution failed: {process.stderr}")
@@ -73,8 +74,10 @@ def pseudos(add, delete, list_pseudos):
 @click.option("--slurm-ntasks", type=int, help="Set SLURM tasks per node")
 @click.option("--slurm-mem", type=str, help="Set SLURM memory")
 @click.option("--environment", type=str, help="Set environment")
-def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_nodes, slurm_ntasks, slurm_mem, environment):
+@click.option("--test-dir", type=click.Path(), help="Set test directory (relative to the WORKING_DIR)")
+def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_nodes, slurm_ntasks, slurm_mem, environment, test_dir):
     """Manage global settings of the package"""
+    from symmstate.config.settings import settings  # Import the global instance
     updated = False
     if pp_dir:
         settings.PP_DIR = Path(pp_dir)
@@ -106,8 +109,12 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
     if environment:
         settings.ENVIRONMENT = environment
         updated = True
+    if test_dir:
+        settings.TEST_DIR = (settings.WORKING_DIR / Path(test_dir)).resolve()
+        updated = True
 
     if updated:
+        settings.save_settings()  # Save the updated settings to file
         click.echo("Settings updated:")
         click.echo(f"PP_DIR: {settings.PP_DIR}")
         click.echo(f"WORKING_DIR: {settings.WORKING_DIR}")
@@ -116,8 +123,24 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
         click.echo(f"DEFAULT_KPT_DENSITY: {settings.DEFAULT_KPT_DENSITY}")
         click.echo(f"SLURM_HEADER: {settings.SLURM_HEADER}")
         click.echo(f"ENVIRONMENT: {settings.ENVIRONMENT}")
+        click.echo(f"TEST_DIR: {settings.TEST_DIR}")
     else:
         click.echo("No settings were updated.")
+
+
+@cli.command(name="show-config")
+def show_config():
+    """Display current global settings."""
+    settings_instance = Settings()
+    click.echo("Current Global Settings:")
+    click.echo(f"PP_DIR: {settings_instance.PP_DIR}")
+    click.echo(f"WORKING_DIR: {settings_instance.WORKING_DIR}")
+    click.echo(f"DEFAULT_ECUT: {settings_instance.DEFAULT_ECUT}")
+    click.echo(f"SYMM_PREC: {settings_instance.SYMM_PREC}")
+    click.echo(f"DEFAULT_KPT_DENSITY: {settings_instance.DEFAULT_KPT_DENSITY}")
+    click.echo(f"SLURM_HEADER: {settings_instance.SLURM_HEADER}")
+    click.echo(f"ENVIRONMENT: {settings_instance.ENVIRONMENT}")
+    click.echo(f"TEST_DIR: {settings_instance.TEST_DIR}")
 
 @cli.command()
 @click.option("-a", "--add", multiple=True, type=click.Path(), help="Add a template file path")
@@ -173,8 +196,8 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
     click.echo(f"Displacement magnitude: {disp_mag}")
     click.echo(f"Unstable threshold: {unstable_threshold}")
 
-    # Create a SlurmFile object using the SLURM header from settings.
-    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items())
+    # Create a SlurmFile object using the SLURM header from Settings.
+    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in Settings().SLURM_HEADER.items())
     slurm_obj = SlurmFile(sbatch_header_source=slurm_header, num_processors=1)
     
     energy_prog = EnergyProgram(
@@ -186,7 +209,7 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
         smodes_input=smodes_input,
         target_irrep=target_irrep,
         slurm_obj=slurm_obj,
-        symm_prec=settings.SYMM_PREC,
+        symm_prec=Settings().SYMM_PREC,
         disp_mag=disp_mag,
         unstable_threshold=unstable_threshold,
     )
@@ -226,7 +249,7 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
     click.echo(f"Unstable threshold: {unstable_threshold}")
     click.echo(f"Piezo calculation: {piezo}")
 
-    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items())
+    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in Settings().SLURM_HEADER.items())
     slurm_obj = SlurmFile(sbatch_header_source=slurm_header, num_processors=1)
     
     et_prog = ElectroTensorProgram(
@@ -238,7 +261,7 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
         smodes_input=smodes_input,
         target_irrep=target_irrep,
         slurm_obj=slurm_obj,
-        symm_prec=settings.SYMM_PREC,
+        symm_prec=Settings().SYMM_PREC,
         disp_mag=disp_mag,
         unstable_threshold=unstable_threshold,
         piezo_calculation=piezo
@@ -252,7 +275,7 @@ def smodes(smodes_input):
     """
     Run SMODES using the provided SMODES input file.
     
-    This command uses the global SMODES path from settings.
+    This command uses the global SMODES path from Settings.
     """
     click.echo("Running SMODES...")
     try:
@@ -264,74 +287,119 @@ def smodes(smodes_input):
 
 @cli.group()
 def test():
-    """Run test suites for individual modules using pytest"""
+    """Run test suites for individual modules"""
     pass
 
 @test.command()
 def abinit_file():
     """Run tests for test_abinit_file.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_abinit_file.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_abinit_file.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def abinit_unit_cell():
     """Run tests for test_abinit_unit_cell.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_abinit_unit_cell.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_abinit_unit_cell.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def electrotensor():
     """Run tests for test_electro_tensor.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_electro_tensor.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_electro_tensor.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def energy_program():
     """Run tests for test_energy_program.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_energy_program.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_energy_program.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def perturbations():
     """Run tests for test_perturbations.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_perturbations.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_perturbations.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def pseudopotential():
     """Run tests for test_pseudopotential.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_pseudopotential.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_pseudopotential.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def slurm_jobs():
     """Run tests for test_slurm_jobs.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_slurm_jobs.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_slurm_jobs.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def smodes_calculator():
     """Run tests for test_smodes_calculator.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_smodes_calculator.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_smodes_calculator.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def template_manager():
     """Run tests for test_template_manager.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_template_manager.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_template_manager.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def unit_cell_module():
     """Run tests for test_unit_cell_module.py"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir / "test_unit_cell_module.py")], check=True)
+    test_path = Settings().TEST_DIR / "unit" / "test_unit_cell_module.py"
+    subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def test_all():
-    """Run all tests at once using pytest discovery"""
-    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
-    subprocess.run(["pytest", str(test_dir)], check=True)
+    """Run all tests at once using pytest"""
+    test_path = Settings().TEST_DIR / "unit"
+    if not test_path.exists():
+        click.echo(f"Test directory not found: {test_path}")
+        return
+    subprocess.run(["pytest", str(test_path)], check=True)
+
+@cli.command()
+@click.option("--results-file", type=click.Path(exists=True), required=True,
+              help="Path to the results file produced by a perturbation run")
+@click.option("--analysis-type", type=click.Choice(["energy", "flexo", "grid", "varying"]),
+              required=True, help="Type of data analysis to perform")
+@click.option("--save", is_flag=True, help="Save the generated plot to a file")
+@click.option("--filename", default="analysis_plot", help="Filename for the saved plot")
+@click.option("--threshold", type=float, default=None,
+              help="Threshold value for 'varying' analysis (optional)")
+def data_analysis(results_file, analysis_type, save, filename, threshold):
+    """Perform data analysis on a results file produced by a perturbation run."""
+    amplitudes, energies, flexo_amps, flexo_tensors = load_flexo_data(results_file)
+
+    if analysis_type == "energy":
+        ax = plot_energy(amplitudes, energies)
+    elif analysis_type == "flexo":
+        ax = plot_flexo_components(flexo_amps, flexo_tensors)
+    elif analysis_type == "grid":
+        fig = plot_flexo_grid(flexo_amps, flexo_tensors)
+    elif analysis_type == "varying":
+        fig = plot_varying_components(flexo_amps, flexo_tensors, threshold=threshold)
+    
+    if save:
+        if analysis_type in ["flexo", "grid", "varying"]:
+            if analysis_type == "grid":
+                fig.savefig(f"{filename}_grid.png", bbox_inches="tight")
+                click.echo(f"Grid plot saved as {filename}_grid.png")
+            elif analysis_type == "varying":
+                fig.savefig(f"{filename}_varying.png", bbox_inches="tight")
+                click.echo(f"Varying components plot saved as {filename}_varying.png")
+            else:
+                ax.get_figure().savefig(f"{filename}_flexo.png", bbox_inches="tight")
+                click.echo(f"Flexoelectric plot saved as {filename}_flexo.png")
+        else:
+            ax.get_figure().savefig(f"{filename}_energy.png", bbox_inches="tight")
+            click.echo(f"Energy plot saved as {filename}_energy.png")
+    else:
+        if analysis_type in ["flexo", "grid", "varying"]:
+            fig.show()
+        else:
+            ax.get_figure().show()
 
 @cli.command()
 @click.option("--results-file", type=click.Path(exists=True), required=True,

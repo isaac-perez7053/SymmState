@@ -24,7 +24,7 @@ class AbinitUnitCell(UnitCell):
         self.vars = {}  # Initialize empty dict first
 
         # Validate initialization method
-        if not unit_cell and not smodes_input:
+        if not unit_cell or not smodes_input:
             init_methods = [abi_file, unit_cell, smodes_input]
             if sum(x is not None for x in init_methods) != 1:
                 raise ValueError("Specify exactly one initialization method")
