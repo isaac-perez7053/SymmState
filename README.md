@@ -1,4 +1,4 @@
-![Project Logo](images/logo.png)
+![Project Logo](images/logo_transparent.png)
 # SymmState
 
 Applications of symmetry in solid state physics 
