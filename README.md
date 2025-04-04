@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 ![Project Logo](images/logo.png)
 
+=======
+<div align="center">
+  <img src="images/logo_transparent.png" alt="Project Logo" width="300"/>
+</div>
+>>>>>>> refs/remotes/origin/main
 
 # SymmState
 
