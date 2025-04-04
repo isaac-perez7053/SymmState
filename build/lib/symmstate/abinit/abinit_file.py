@@ -64,7 +64,7 @@ class AbinitFile(AbinitUnitCell):
             counter += 1
         return unique_name
 
-    def write_custom_abifile(self, output_file: str, content: str, coords_are_cartesian: bool = False) -> None:
+    def write_custom_abifile(self, output_file: str, content: str, coords_are_cartesian: bool = False, pseudos: List = []) -> None:
         """
         Writes a custom Abinit .abi file using user-defined or default parameters.
 
@@ -133,11 +133,14 @@ class AbinitFile(AbinitUnitCell):
             outf.write(f"nstep {self.vars.get('nstep', 9)} \n")
             outf.write(f"diemac {self.vars.get('diemac', '1000000.0')} \n")
             outf.write(f"ixc {self.vars['ixc']} \n")
-            outf.write(f"{self.conv_criteria[0]} {str(self.conv_criteria[1])} \n")
+            outf.write(f"{self.vars['conv_criteria']} {str(self.vars[self.vars['conv_criteria']])} \n")
             # Use pseudopotential information parsed into self.vars.
-            pp_dir = self.vars.get("pp_dirpath", "undefined")
-            outf.write(f'\npp_dirpath "{pp_dir}" \n')
-            pseudos = self.vars.get("pseudos", [])
+            pp_dir_path = PseudopotentialManager().folder_path
+            outf.write(f'\npp_dirpath "{pp_dir_path}" \n')
+
+            if len(pseudos) == 0:
+                pseudos = self.vars.get("pseudos", [])
+                
             concatenated_pseudos = " ".join(pseudos)
             outf.write(f'pseudos "{concatenated_pseudos}" \n')
             self.log_or_print(f"The Abinit file {output_file} was created successfully!", logger=self._logger)
@@ -171,10 +174,9 @@ class AbinitFile(AbinitUnitCell):
                 batch_name = os.path.basename(batch_name)
                 # Use the provided SlurmFile object.
                 script_created = self.slurm_obj.write_batch_script(
-                    input_file=file_path,
+                    input_file=input_file,
+                    log_file=log,
                     batch_name=batch_name,
-                    host_spec=host_spec,
-                    log=log,
                 )
                 self.log_or_print(f"Batch script created: {script_created}", logger=self._logger)
                 result = subprocess.run(
@@ -317,69 +319,94 @@ kptopt2 2
             log=f"{output_file}.log"
         )
 
-    def run_anaddb_file(self, ddb_file: str, content: str = "", flexo: bool = False, peizo: bool = False) -> str:
+    def run_anaddb_file(
+        self,
+        content: str = "",
+        files_content: str = "",
+        *, 
+        ddb_file: str,
+        flexo: bool = False,
+        peizo: bool = False
+    ) -> str:
         """
-        Executes an anaddb calculation, customized for flexoelectric or piezoelectric responses.
+        Executes an anaddb calculation. Supports default manual mode and optional presets for flexoelectric or piezoelectric calculations.
+
+        Args:
+            ddb_file: Path to the DDB file.
+            content: Content to write into the .abi file (used if neither flexo nor peizo are True).
+            files_content: Content for the .files file (used if neither flexo nor peizo are True).
+            flexo: If True, runs a flexoelectric preset calculation.
+            peizo: If True, runs a piezoelectric preset calculation.
+
+        Returns:
+            str: Name of the output file produced.
         """
         if flexo:
-            content_f: str = """
-! anaddb calculation of flexoelectric tensor
-flexoflag 1
-"""
-            files_content: str = f"""{self.file_name}_flexo_anaddb.abi
-{self.file_name}_flexo_output
-{ddb_file}
-dummy1
-dummy2
-dummy3
-dummy4
-"""
-            with open(f"{self.file_name}_flexo_anaddb.abi", "w") as outf:
-                outf.write(content_f)
-            with open(f"{self.file_name}_flexo_anaddb.files", "w") as outff:
-                outff.write(files_content)
-            command: str = f"anaddb < {self.file_name}_flexo_anaddb.files > {self.file_name}_flexo_anaddb.log"
-            try:
-                subprocess.run(command, shell=True, check=True)
-                self.log_or_print(f"Command executed successfully: {command}", logger=self._logger)
-            except subprocess.CalledProcessError as e:
-                self.log_or_print(f"An error occurred while executing the command: {e}", logger=self._logger, level=logging.ERROR)
-            return f"{self.file_name}_flexo_output"
+            content = """
+    ! anaddb calculation of flexoelectric tensor
+    flexoflag 1
+    """.strip()
+
+            files_content = f"""{self.file_name}_flexo_anaddb.abi
+    {self.file_name}_flexo_output
+    {ddb_file}
+    dummy1
+    dummy2
+    dummy3
+    dummy4
+    """.strip()
+
+            abi_path = f"{self.file_name}_flexo_anaddb.abi"
+            files_path = f"{self.file_name}_flexo_anaddb.files"
+            log_path = f"{self.file_name}_flexo_anaddb.log"
+            output_file = f"{self.file_name}_flexo_output"
+
         elif peizo:
-            content_p: str = """
-! Input file for the anaddb code
-elaflag 3
-piezoflag 3
-instrflag 1
-"""
-            files_content: str = f"""
-{self.file_name}_piezo_anaddb.abi
-{self.file_name}_piezo_output
-{ddb_file}
-dummy1
-dummy2
-dummy3
-"""
-            with open(f"{self.file_name}_piezo_anaddb.abi", "w") as outf:
-                outf.write(content_p)
-            with open(f"{self.file_name}_piezo_anaddb.files", "w") as outff:
-                outff.write(files_content)
-            command: str = f"anaddb < {self.file_name}_piezo_anaddb.files > {self.file_name}_piezo_anaddb.log"
-            try:
-                subprocess.run(command, shell=True, check=True)
-                self.log_or_print(f"Command executed successfully: {command}", logger=self._logger)
-            except subprocess.CalledProcessError as e:
-                self.log_or_print(f"An error occurred while executing the command: {e}", logger=self._logger, level=logging.ERROR)
-            return f"{self.file_name}_piezo_output"
+            content = """
+    ! Input file for the anaddb code
+    elaflag 3
+    piezoflag 3
+    instrflag 1
+    """.strip()
+
+            files_content = f"""{self.file_name}_piezo_anaddb.abi
+    {self.file_name}_piezo_output
+    {ddb_file}
+    dummy1
+    dummy2
+    dummy3
+    """.strip()
+
+            abi_path = f"{self.file_name}_piezo_anaddb.abi"
+            files_path = f"{self.file_name}_piezo_anaddb.files"
+            log_path = f"{self.file_name}_piezo_anaddb.log"
+            output_file = f"{self.file_name}_piezo_output"
+
         else:
-            with open(f"{self.file_name}_anaddb.abi", "w") as outf:
-                outf.write(content)
-            command: str = f"anaddb < {self.file_name}_anaddb.files > {self.file_name}_anaddb.log"
-            try:
-                subprocess.run(command, shell=True, check=True)
-                self.log_or_print(f"Command executed successfully: {command}", logger=self._logger)
-            except subprocess.CalledProcessError as e:
-                self.log_or_print(f"An error occurred while executing the command: {e}", logger=self._logger, level=logging.ERROR)
+            if not content.strip() or not files_content.strip():
+                raise ValueError("Must provide both `content` and `files_content` when not using flexo or peizo mode.")
+
+            abi_path = f"{self.file_name}_anaddb.abi"
+            files_path = f"{self.file_name}_anaddb.files"
+            log_path = f"{self.file_name}_anaddb.log"
+            output_file = f"{self.file_name}_anaddb_output"
+
+        # Write files
+        with open(abi_path, "w") as abi_file:
+            abi_file.write(content)
+        with open(files_path, "w") as files_file:
+            files_file.write(files_content)
+
+        # Run the anaddb command
+        command = f"anaddb < {files_path} > {log_path}"
+        try:
+            subprocess.run(command, shell=True, check=True)
+            self.log_or_print(f"Command executed successfully: {command}", logger=self._logger)
+        except subprocess.CalledProcessError as e:
+            self.log_or_print(f"An error occurred while executing the command: {e}", logger=self._logger, level=logging.ERROR)
+
+        return output_file
+
 
     def run_mrgddb_file(self, content: str) -> None:
         """

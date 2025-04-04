@@ -24,9 +24,10 @@ class AbinitUnitCell(UnitCell):
         self.vars = {}  # Initialize empty dict first
 
         # Validate initialization method
-        init_methods = [abi_file, unit_cell, smodes_input]
-        if sum(x is not None for x in init_methods) != 1:
-            raise ValueError("Specify exactly one initialization method")
+        if not unit_cell and not smodes_input:
+            init_methods = [abi_file, unit_cell, smodes_input]
+            if sum(x is not None for x in init_methods) != 1:
+                raise ValueError("Specify exactly one initialization method")
 
         if abi_file:
             self.abi_file = abi_file

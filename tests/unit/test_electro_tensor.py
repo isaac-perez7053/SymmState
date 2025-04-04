@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 
 # Import the program to test.
-from symmstate.flpz.energy.electrotensor_program import ElectroTensorProgram
+from symmstate.flpz.electrotensor.electro_tensor_program import ElectroTensorProgram
 
 # Dummy classes to simulate behavior.
 class DummySmodesProcessor:

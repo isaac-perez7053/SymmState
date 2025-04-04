@@ -14,7 +14,6 @@ def load_flexo_data(filename):
         current_tensor = []
         current_row = []
         in_tensor_section = False
-
         for line in content.split('\n'):
             stripped = line.strip()
             if "List of Flexo Electric Tensors:" in line:

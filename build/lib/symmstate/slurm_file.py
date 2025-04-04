@@ -36,6 +36,44 @@ class SlurmFile(SymmStateCore):
 
         print(f"Initialized SLURM manager with {self.num_processors} processors")
 
+    def write_batch_script(
+        self,
+        input_file: str = "input.in",
+        log_file: str = "job.log",
+        batch_name: str = "job.sh",
+        mpi_command_template: str = "mpirun -np {num_procs} abinit < {input_file} > {log}",
+        extra_commands: Optional[str] = None,
+    ) -> str:
+        """
+        Write a SLURM batch script with a customizable MPI execution line.
+
+        Args:
+            input_file: Name of the input file for the calculation.
+            log_file: Name of the file to store output logs.
+            batch_name: Name of the batch script to write.
+            mpi_command_template: Template for the MPI command line.
+            extra_commands: Optional string of additional shell commands to insert after the MPI line.
+
+        Returns:
+            str: The path to the written batch script.
+        """
+        mpi_line = mpi_command_template.format(
+            num_procs=self.num_processors,
+            input_file=input_file,
+            log=log_file
+        )
+
+        script_content = f"{self.batch_header.strip()}\n\n{mpi_line}"
+        if extra_commands:
+            script_content += f"\n\n{extra_commands.strip()}\n"
+
+        with open(batch_name, "w") as script_file:
+            script_file.write(script_content)
+
+        print(f"Wrote batch script to {batch_name}")
+        return batch_name
+
+
     def all_jobs_finished(self) -> bool:
         """
         Comprehensive job completion check with error handling.

@@ -5,24 +5,23 @@ description = "Solid-state Physics Package for Symmetry Based Calculations!"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
-    { name = "Isaac Perez", email = "isacvillages@gmail.com" },
+  { name = "Isaac Perez", email = "isacvillages@gmail.com" }
 ]
 classifiers = [
-    "Development Status ::",
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "License :: 
+    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Chemistry",
-    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Physics"
 ]
 
-# Core dependencies required for the package.
 dependencies = [
     "pymatgen>=2023.7.20",
     "numpy>=1.21",
     "scipy>=1.7",
     "click>=8.0",
-    "matplotlib>=3.5",
+    "matplotlib>=3.5"
 ]
 
 [project.scripts]
@@ -30,7 +29,7 @@ symmstate = "symmstate.__main__:main"
 
 [project.optional-dependencies]
 dev = [
-    "black>=22.3",
+    "black>=22.3"
 ]
 
 [build-system]
@@ -39,3 +38,4 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+

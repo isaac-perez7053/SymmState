@@ -45,6 +45,24 @@ class AbinitParser:
             'nstep': AbinitParser._parse_scalar(content, 'nstep', int),
             'useylm': AbinitParser._parse_scalar(content, 'useylm', int),
         }
+
+        # Determine the type of convergence criteria used
+        init_methods = [parsed_data['toldfe'], parsed_data['tolvrs'], parsed_data['tolsym']]
+        if sum(x is not None for x in init_methods) != 1:
+            raise ValueError("Specify exactly one convergence criteria")
+        
+        conv_criteria = None
+        if parsed_data['toldfe'] is not None:
+            conv_criteria = 'toldfe'
+        elif parsed_data['tolsym'] is not None:
+            conv_criteria = 'tolsym'
+        elif parsed_data['tolvrs'] is not None:
+            conv_criteria = 'tolvrs'
+        
+        if conv_criteria is None:
+            raise ValueError("Please specify a convergence criteria")
+        parsed_data['conv_critera'] = conv_criteria
+
         # Remove None values
         return {k: v for k, v in parsed_data.items() if v is not None}
 

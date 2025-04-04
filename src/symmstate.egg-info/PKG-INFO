@@ -1,10 +1,11 @@
 Metadata-Version: 2.4
 Name: symmstate
-Version: 0.1.0
+Version: 0.9.0
 Summary: Solid-state Physics Package for Symmetry Based Calculations!
-Home-page: https://github.com/yourusername/symmstate
+Home-page: https://github.com/isaac-perez7053
 Author: Isaac Perez
-Author-email: Your Name <your.email@example.com>
+Author-email: Isaac Perez <isacvillages@gmail.com>
+Classifier: Development Status :: 3 - Alpha
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Intended Audience :: Science/Research
@@ -15,18 +16,14 @@ Description-Content-Type: text/markdown
 Requires-Dist: pymatgen>=2023.7.20
 Requires-Dist: numpy>=1.21
 Requires-Dist: scipy>=1.7
-Requires-Dist: jinja2>=3.0
-Requires-Dist: pyyaml>=6.0
-Requires-Dist: fireworks>=1.9
-Requires-Dist: pydantic>=1.9
+Requires-Dist: click>=8.0
+Requires-Dist: matplotlib>=3.5
 Provides-Extra: dev
-Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: black>=22.3; extra == "dev"
-Requires-Dist: mypy>=0.950; extra == "dev"
-Requires-Dist: flake8>=4.0; extra == "dev"
-Provides-Extra: ml
-Requires-Dist: tensorflow>=2.8; extra == "ml"
-Requires-Dist: torch>=1.11; extra == "ml"
+
+<div align="center">
+  <img src="images/logo_transparent.png" alt="Project Logo" width="300"/>
+</div>
 
 # SymmState
 
@@ -60,7 +57,8 @@ This will install all necessary dependencies for SymmState and make it ready for
 - **Symmetry Analysis**: Perform advanced symmetry analysis on solid-state materials.
 - **Flexoelectric Properties**: Calculate flexoelectric properties for various materials and their evolution under particular perturbations.
 - **Piezoelectric Properties**: Evaluate the piezoelectric response of various materials and evolution under particular perturbations.
-- **Abinit Integration**: Interact seamlessly with Abinit for simulations.
+- **Abinit Integration**: Interact seamlessly with Abinit for s:q
+imulations.
   
 ## Future Features
 
