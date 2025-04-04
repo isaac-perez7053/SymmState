@@ -1,4 +1,4 @@
-![Project Logo](images/logo_transparent.png)
+<img src="images/logo_transparent.png" alt="Project Logo" width="300"/>
 # SymmState
 
 Applications of symmetry in solid state physics 
