@@ -38,6 +38,7 @@ xred
 znucl 14
 typat 1 1
 ecut 20
+tolvrs 1
 """
         with open(path, 'w') as f:
             f.write(content)

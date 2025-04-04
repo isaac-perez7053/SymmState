@@ -1,7 +1,7 @@
 import os
+import subprocess
 from pathlib import Path
 import click
-import subprocess
 from symmstate.config.settings import settings
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
 from symmstate.templates.template_manager import TemplateManager
@@ -15,6 +15,7 @@ from symmstate.flpz.data_analysis import (
     plot_flexo_grid,
     plot_varying_components,
 )
+import click
 
 # Define the run_smodes function directly in this file to avoid circular imports.
 def run_smodes(smodes_input):
@@ -32,17 +33,16 @@ def cli():
     """SymmState: Applications of symmetry in solid state physics"""
 
 @cli.command()
-@click.option("-a", "--add", multiple=True, type=click.Path(), help="Add one or more pseudo potential file paths")
-@click.option("-d", "--delete", multiple=True, type=click.Path(), help="Delete one or more pseudo potential file paths")
+@click.option("-a", "--add", multiple=True, type=click.Path(), help="Add one or more pseudopotential file paths")
+@click.option("-d", "--delete", multiple=True, type=click.Path(), help="Delete one or more pseudopotential file paths")
 @click.option("-l", "--list", "list_pseudos", is_flag=True, help="List current pseudopotentials")
 def pseudos(add, delete, list_pseudos):
-    """Manage pseudo potential folder paths"""
+    """Manage pseudopotential folder paths"""
     if (add or delete) and list_pseudos:
-        click.echo("Error: Please specify only one action at a time (either add, delete, or list).")
+        click.echo("Error: Specify only one action at a time (either add, delete, or list).")
         return
 
     pm = PseudopotentialManager()
-    
     if add:
         for path in add:
             pm.add_pseudopotential(path)
@@ -123,12 +123,12 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
 @click.option("-d", "--delete", multiple=True, type=click.Path(), help="Delete a template file path")
 def templates(add, delete):
     """Manage templates"""
+    from symmstate.templates.template_manager import TemplateManager
     if add and delete:
-        click.echo("Error: Please specify only one action at a time (either add or delete).")
+        click.echo("Error: Specify only one action at a time (either add or delete).")
         return
 
     tm = TemplateManager()
-    
     if add:
         for path in add:
             tm.create_template(path, os.path.basename(path))
@@ -157,7 +157,7 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
     Required inputs:
       - abi-file: Path to a valid Abinit file.
       - smodes-input: Path to the SMODES input file.
-      - target-irrep: Target irreducible representation (e.g., 'irrepsample').
+      - target-irrep: Target irreducible representation.
       
     Other parameters (with defaults) can be adjusted via options.
     """
@@ -261,6 +261,68 @@ def smodes(smodes_input):
     except Exception as e:
         click.echo(f"Error running SMODES: {e}")
 
+@cli.group()
+def test():
+    """Run test suites for individual modules"""
+    pass
+
+@test.command()
+def abinit_file():
+    """Run tests for test_abinit_file.py"""
+    # Adjust the relative path to point two directories up.
+    subprocess.run(["", os.path.join("..", "..", "tests", "unit", "test_abinit_file.py")], check=True)
+
+@test.command()
+def abinit_unit_cell():
+    """Run tests for test_abinit_unit_cell.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_abinit_unit_cell.py")], check=True)
+
+@test.command()
+def electrotensor():
+    """Run tests for test_electro_tensor.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_electro_tensor.py")], check=True)
+
+@test.command()
+def energy_program():
+    """Run tests for test_energy_program.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_energy_program.py")], check=True)
+
+@test.command()
+def perturbations():
+    """Run tests for test_perturbations.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_perturbations.py")], check=True)
+
+@test.command()
+def pseudopotential():
+    """Run tests for test_pseudopotential.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_pseudopotential.py")], check=True)
+
+@test.command()
+def slurm_jobs():
+    """Run tests for test_slurm_jobs.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_slurm_jobs.py")], check=True)
+
+@test.command()
+def smodes_calculator():
+    """Run tests for test_smodes_calculator.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_smodes_calculator.py")], check=True)
+
+@test.command()
+def template_manager():
+    """Run tests for test_template_manager.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_template_manager.py")], check=True)
+
+@test.command()
+def unit_cell_module():
+    """Run tests for test_unit_cell_module.py"""
+    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_unit_cell_module.py")], check=True)
+
+@test.command()
+def test_all():
+    """Run all tests at once using pytest"""
+    subprocess.run("pytest ../../tests/unit/test_*.py", shell=True, check=True)
+
+
 @cli.command()
 @click.option("--results-file", type=click.Path(exists=True), required=True,
               help="Path to the results file produced by a perturbation run")
@@ -305,4 +367,6 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
 
 if __name__ == "__main__":
     cli()
+
+
 

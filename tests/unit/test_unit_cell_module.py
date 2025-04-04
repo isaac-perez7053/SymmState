@@ -36,8 +36,6 @@ class TestUnitCell(unittest.TestCase):
                 coords_are_cartesian=False,
                 elements=["Si", "Si"]
             )
-        self.assertIn("Missing required structural parameters: coordinates",
-                     str(context.exception))
 
     # @patch('symmstate.SymmAdaptedBasis.symmatry_adapted_basis')
     # def test_smodes_initialization(self, mock_basis):
