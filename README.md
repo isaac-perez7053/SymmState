@@ -1,4 +1,7 @@
-<img src="images/logo_transparent.png" alt="Project Logo" width="300"/>
+<div align="center">
+  <img src="images/logo_transparent.png" alt="Project Logo" width="300"/>
+</div>
+
 # SymmState
 
 Applications of symmetry in solid state physics 
