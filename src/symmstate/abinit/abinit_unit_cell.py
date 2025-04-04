@@ -24,9 +24,10 @@ class AbinitUnitCell(UnitCell):
         self.vars = {}  # Initialize empty dict first
 
         # Validate initialization method
-        init_methods = [abi_file, unit_cell, smodes_input]
-        if sum(x is not None for x in init_methods) != 1:
-            raise ValueError("Specify exactly one initialization method")
+        if not unit_cell and not smodes_input:
+            init_methods = [abi_file, unit_cell, smodes_input]
+            if sum(x is not None for x in init_methods) != 1:
+                raise ValueError("Specify exactly one initialization method")
 
         if abi_file:
             self.abi_file = abi_file
@@ -63,26 +64,29 @@ class AbinitUnitCell(UnitCell):
                 symm_prec=symm_prec
             )
 
-    def _store_abinit_parameters(self):
-        """Store Abinit-specific parameters from parsed file"""
-        self.znucl = self.vars.get('znucl')
-        self.typat = self.vars.get('typat')
-        self.ecut = self.vars.get('ecut')
+        # Ensure an instance of xred and xcart are included in the variable dictionary 
+        if 'xred' not in self.vars:
+            self.vars['xred'] = np.array(self.structure.frac_coords)
+        elif 'xcart' not in self.vars:
+            self.vars['xcart'] = np.array(self.structure.cart_coords)
+
 
     def _derive_abinit_parameters(self):
         """Derive parameters and populate vars"""
-        self.rprim = self.structure.lattice.matrix
-        self.natom = len(self.structure)
-        self.znucl = sorted({e.Z for e in self.structure.species})
-        self.typat = [self.znucl.index(s.Z) + 1 for s in self.structure.species]
-        self.ntypat = len(self.znucl)
+        rprim = self.structure.lattice.matrix
+        natom = len(self.structure)
+        znucl = sorted({e.Z for e in self.structure.species})
+        typat = [znucl.index(s.Z) + 1 for s in self.structure.species]
+        ntypat = len(znucl)
         
         # Update vars
         self.vars.update({
             "acell": list(self.structure.lattice.abc),
-            "rprim": self.structure.lattice.matrix.tolist(),
-            "znucl": self.znucl,
-            "typat": self.typat
+            "rprim": np.array(rprim),
+            "znucl": znucl,
+            "typat": typat,
+            "natom": natom,
+            "ntypat": ntypat
         })
 
     def _init_from_abinit_vars(self):
@@ -113,10 +117,6 @@ class AbinitUnitCell(UnitCell):
             elements=elements
         )
 
-        # Store additional Abinit-specific parameters
-        self.znucl = self.vars.get('znucl')
-        self.typat = self.vars.get('typat')
-        self.ecut = self.vars.get('ecut')
 
     def _convert_znucl_typat(self) -> List[str]:
         """Convert znucl/typat to element symbols"""
@@ -181,14 +181,25 @@ class AbinitUnitCell(UnitCell):
 
     def change_coordinates(self, new_coordinates, coords_are_cartesian=False):
         """Update coordinates directly without super() call"""
+
+        if not isinstance(new_coordinates, np.ndarray):
+            raise TypeError("Ensure that the new coordinates are a numpy array")
+        
+        elif new_coordinates.shape != self.vars['xred'].shape:
+            raise ValueError("Ensure that the coordinates have the same dimensions")
+
         self.structure = Structure(
             lattice=self.structure.lattice,
             species=self.structure.species,
             coords=new_coordinates,
             coords_are_cartesian=coords_are_cartesian
         )
-        self.coordinates_xcart = self.structure.cart_coords
-        self.coordinates_xred = self.structure.frac_coords
+
+        # Update variable dictionary
+        if coords_are_cartesian:
+            self.vars['xcart'] = new_coordinates
+        else:
+            self.vars['xred'] = new_coordinates
 
     def perturbations(self, perturbation, coords_is_cartesian=False):
         """
@@ -209,9 +220,9 @@ class AbinitUnitCell(UnitCell):
             )
 
         if coords_is_cartesian:
-            new_coordinates = self.coordinates_xcart + perturbation
+            new_coordinates = self.vars['xcart'] + perturbation
         else:
-            new_coordinates = self.coordinates_xred + perturbation
+            new_coordinates = self.vars['xred'] + perturbation
 
         copy_cell = self.copy_abinit_unit_cell()
         # Calculate new coordinates by adding the perturbation

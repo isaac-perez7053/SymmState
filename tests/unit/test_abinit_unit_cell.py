@@ -51,10 +51,10 @@ ecut 20
         self.assertAlmostEqual(cell.structure.lattice.a, 5.0)
         
         # Verify derived Abinit parameters
-        self.assertEqual(cell.natom, 2)
-        self.assertEqual(cell.ntypat, 1)
-        self.assertEqual(cell.znucl, [14])
-        self.assertEqual(cell.typat, [1, 1])
+        self.assertEqual(cell.vars['natom'], 2)
+        self.assertEqual(cell.vars['ntypat'], 1)
+        self.assertEqual(cell.vars['znucl'], [14])
+        self.assertEqual(cell.vars['typat'], [1, 1])
 
     def test_abinit_file_initialization(self):
         """Test initialization from Abinit input file"""
