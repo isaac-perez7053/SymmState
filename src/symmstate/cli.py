@@ -16,8 +16,9 @@ from symmstate.flpz.data_analysis import (
     plot_varying_components,
 )
 import click
+import subprocess
 
-# Define the run_smodes function directly in this file to avoid circular imports.
+# Define the run_smodes function directly here to avoid circular imports.
 def run_smodes(smodes_input):
     from symmstate.config.settings import settings  # local import to avoid circularity
     if not Path(settings.SMODES_PATH).is_file():
@@ -263,65 +264,74 @@ def smodes(smodes_input):
 
 @cli.group()
 def test():
-    """Run test suites for individual modules"""
+    """Run test suites for individual modules using pytest"""
     pass
 
 @test.command()
 def abinit_file():
     """Run tests for test_abinit_file.py"""
-    # Adjust the relative path to point two directories up.
-    subprocess.run(["", os.path.join("..", "..", "tests", "unit", "test_abinit_file.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_abinit_file.py")], check=True)
 
 @test.command()
 def abinit_unit_cell():
     """Run tests for test_abinit_unit_cell.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_abinit_unit_cell.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_abinit_unit_cell.py")], check=True)
 
 @test.command()
 def electrotensor():
     """Run tests for test_electro_tensor.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_electro_tensor.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_electro_tensor.py")], check=True)
 
 @test.command()
 def energy_program():
     """Run tests for test_energy_program.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_energy_program.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_energy_program.py")], check=True)
 
 @test.command()
 def perturbations():
     """Run tests for test_perturbations.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_perturbations.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_perturbations.py")], check=True)
 
 @test.command()
 def pseudopotential():
     """Run tests for test_pseudopotential.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_pseudopotential.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_pseudopotential.py")], check=True)
 
 @test.command()
 def slurm_jobs():
     """Run tests for test_slurm_jobs.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_slurm_jobs.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_slurm_jobs.py")], check=True)
 
 @test.command()
 def smodes_calculator():
     """Run tests for test_smodes_calculator.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_smodes_calculator.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_smodes_calculator.py")], check=True)
 
 @test.command()
 def template_manager():
     """Run tests for test_template_manager.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_template_manager.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_template_manager.py")], check=True)
 
 @test.command()
 def unit_cell_module():
     """Run tests for test_unit_cell_module.py"""
-    subprocess.run(["pytest", os.path.join("..", "..", "tests", "unit", "test_unit_cell_module.py")], check=True)
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir / "test_unit_cell_module.py")], check=True)
 
 @test.command()
 def test_all():
-    """Run all tests at once using pytest"""
-    subprocess.run("pytest ../../tests/unit/test_*.py", shell=True, check=True)
-
+    """Run all tests at once using pytest discovery"""
+    test_dir = Path(__file__).resolve().parent.parent.parent / "tests" / "unit"
+    subprocess.run(["pytest", str(test_dir)], check=True)
 
 @cli.command()
 @click.option("--results-file", type=click.Path(exists=True), required=True,
