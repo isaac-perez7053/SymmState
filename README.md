@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="images/logo_transparent.png" alt="Project Logo" width="300"/>
+  <img src="images/logo-removebg-preview.png" alt="Project Logo" width="300"/>
 </div>
 
 # SymmState
