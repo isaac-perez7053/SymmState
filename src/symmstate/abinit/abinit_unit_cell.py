@@ -20,14 +20,14 @@ class AbinitUnitCell(UnitCell):
         target_irrep: Optional[str] = None,
         symm_prec: float = 1e-5
     ):
-        
-        self.vars = {}  # Initialize empty dict first
+        self.vars = {}  # Initialize empty dictionary first
 
         # Validate initialization method
-        if not unit_cell or not smodes_input:
+        if (abi_file is None) or (smodes_input is None):
             init_methods = [abi_file, unit_cell, smodes_input]
             if sum(x is not None for x in init_methods) != 1:
                 raise ValueError("Specify exactly one initialization method")
+
 
         if abi_file:
             self.abi_file = abi_file
@@ -214,7 +214,7 @@ class AbinitUnitCell(UnitCell):
 
         # Ensure the perturbation has the correct shape
         perturbation = np.array(perturbation, dtype=float)
-        if perturbation.shape != self.coordinates_xred.shape:
+        if perturbation.shape != self.grab_cartesian_coordinates().shape:
             raise ValueError(
                 "Perturbation must have the same shape as the coordinates."
             )

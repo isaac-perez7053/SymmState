@@ -2,8 +2,6 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 import numpy as np
-
-# Import the program to test.
 from symmstate.flpz.electrotensor.electro_tensor_program import ElectroTensorProgram
 
 # Dummy classes to simulate behavior.
@@ -27,22 +25,26 @@ class DummyPerturbations:
     def __init__(self, *args, **kwargs):
         # Set dummy attributes for testing.
         self.list_amps = [0.0, 0.5]
-        self.results = {"energies": [10, 20], "piezo": {"clamped": [[[1]]], "relaxed": [[[2]]]} }
-        self.list_flexo_tensors = [[ [0.1]*6 ] * 9]
-        self.list_piezo_tensors_clamped = [[ [0.2]*6 ] * 9]
-        self.list_piezo_tensors_relaxed = [[ [0.3]*6 ] * 9]
+        self.results = {"energies": [10, 20],
+                        "piezo": {"clamped": [[[1]]], "relaxed": [[[2]]]} }
+        self.list_flexo_tensors = [[[0.1]*6]*9]
+        self.list_piezo_tensors_clamped = [[[0.2]*6]*9]
+        self.list_piezo_tensors_relaxed = [[[0.3]*6]*9]
     
     def generate_perturbations(self):
         # For testing, simply do nothing.
         pass
 
     def calculate_energy_of_perturbations(self):
+        # For testing, do nothing.
         pass
 
     def calculate_flexo_of_perturbations(self):
+        # For testing, do nothing.
         pass
 
     def calculate_piezo_of_perturbations(self):
+        # For testing, do nothing.
         pass
 
     def data_analysis(self, **kwargs):
@@ -64,7 +66,7 @@ class TestElectroTensorProgram(unittest.TestCase):
         # Create a dummy slurm object.
         self.dummy_slurm = DummySlurm()
         # Create an instance of ElectroTensorProgram with dummy parameters.
-        self.energy_prog = ElectroTensorProgram(
+        self.et_prog = ElectroTensorProgram(
             name="TestElectro",
             num_datapoints=2,
             abi_file="dummy.abi",
@@ -78,50 +80,52 @@ class TestElectroTensorProgram(unittest.TestCase):
             unstable_threshold=-20,
             piezo_calculation=False
         )
-        # Patch update_abinit_file to avoid file operations during testing.
-        self.energy_prog.update_abinit_file = lambda x: None
+        # Patch update_abinit_file to avoid actual file operations during testing.
+        self.et_prog.update_abinit_file = lambda x: None
 
-    @patch('symmstate.flpz.energy.electrotensor_program.SmodesProcessor')
-    @patch('symmstate.flpz.energy.electrotensor_program.Perturbations')
+    @patch('symmstate.flpz.electrotensor.electro_tensor_program.SmodesProcessor')
+    @patch('symmstate.flpz.electrotensor.electro_tensor_program.Perturbations')
     def test_run_program_with_unstable_phonons(self, MockPerturbations, MockSmodesProcessor):
         # Set up DummySmodesProcessor to return one unstable phonon.
         dummy_smodes = DummySmodesProcessor()
         MockSmodesProcessor.return_value = dummy_smodes
+
         # Configure DummyPerturbations to be used for each unstable phonon.
         MockPerturbations.side_effect = lambda *args, **kwargs: DummyPerturbations()
 
         # Run the program.
-        self.energy_prog.run_program()
+        self.et_prog.run_program()
 
         # Check that the smodes processor was set.
-        self.assertIsNotNone(self.energy_prog.get_smodes_processor())
+        self.assertIsNotNone(self.et_prog.get_smodes_processor())
         # Check that perturbations were created (should be one since one unstable phonon).
-        perturbations = self.energy_prog.get_perturbations()
+        perturbations = self.et_prog.get_perturbations()
         self.assertEqual(len(perturbations), 1)
 
-    @patch('symmstate.flpz.energy.electrotensor_program.SmodesProcessor')
+    @patch('symmstate.flpz.electrotensor.electro_tensor_program.SmodesProcessor')
     def test_run_program_no_unstable_phonons(self, MockSmodesProcessor):
         # Set up DummySmodesProcessor to simulate no unstable phonons.
         dummy_smodes = DummySmodesProcessor()
         dummy_smodes.symmadapt = lambda: []  # Return empty list.
         MockSmodesProcessor.return_value = dummy_smodes
 
-        self.energy_prog.run_program()
+        self.et_prog.run_program()
 
         # Expect that no perturbations were created.
-        self.assertEqual(len(self.energy_prog.get_perturbations()), 0)
+        self.assertEqual(len(self.et_prog.get_perturbations()), 0)
 
     def test_get_smodes_processor(self):
         # Manually set a dummy smodes processor.
         dummy_smodes = DummySmodesProcessor()
-        self.energy_prog._ElectroTensorProgram__smodes_processor = dummy_smodes
-        self.assertEqual(self.energy_prog.get_smodes_processor(), dummy_smodes)
+        self.et_prog._ElectroTensorProgram__smodes_processor = dummy_smodes
+        self.assertEqual(self.et_prog.get_smodes_processor(), dummy_smodes)
 
     def test_get_perturbations(self):
         # Manually set dummy perturbations.
         dummy_perturbations = [DummyPerturbations(), DummyPerturbations()]
-        self.energy_prog._ElectroTensorProgram__perturbations = dummy_perturbations
-        self.assertEqual(self.energy_prog.get_perturbations(), dummy_perturbations)
+        self.et_prog._ElectroTensorProgram__perturbations = dummy_perturbations
+        self.assertEqual(self.et_prog.get_perturbations(), dummy_perturbations)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,7 +6,7 @@ from scipy.sparse.linalg import cg
 import warnings
 from symmstate.abinit import AbinitFile
 from symmstate.flpz import FlpzCore
-from symmstate.config.settings import settings
+from symmstate.config.settings import Settings
 from symmstate.utils.symmetry_adapted_basis import SymmAdaptedBasis
 
 np.set_printoptions(precision=10)
@@ -284,9 +284,9 @@ class SmodesProcessor(FlpzCore):
         return matrix
 
     def run_smodes(self, smodes_input):
-        if not Path(settings.SMODES_PATH).is_file():
-            raise FileNotFoundError(f"SMODES executable not found at: {settings.SMODES_PATH}")
-        command = f"{settings.SMODES_PATH} < {smodes_input} > output.log"
+        if not Path(Settings().SMODES_PATH).is_file():
+            raise FileNotFoundError(f"SMODES executable not found at: {Settings().SMODES_PATH}")
+        command = f"{Settings().SMODES_PATH} < {smodes_input} > output.log"
         process = subprocess.run(command, shell=True, capture_output=True, text=True)
         if process.returncode != 0:
             raise RuntimeError(f"SMODES execution failed: {process.stderr}")

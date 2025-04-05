@@ -1,5 +1,5 @@
 PP_DIR: pseudopotentials
-SMODES_PATH: ../isobyu/smodes
+SMODES_PATH: /Users/isaacperez/Downloads/Personal_Projects/abinit-9.10.3/symmstate_program
 WORKING_DIR: .
 DEFAULT_ECUT: 50
 SYMM_PREC: 1e-05

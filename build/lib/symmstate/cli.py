@@ -75,7 +75,8 @@ def pseudos(add, delete, list_pseudos):
 @click.option("--slurm-mem", type=str, help="Set SLURM memory")
 @click.option("--environment", type=str, help="Set environment")
 @click.option("--test-dir", type=click.Path(), help="Set test directory (relative to the WORKING_DIR)")
-def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_nodes, slurm_ntasks, slurm_mem, environment, test_dir):
+@click.option('--smodes-path', type=click.Path(), help="Set the path to the SMODES executable file")
+def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_nodes, slurm_ntasks, slurm_mem, environment, test_dir, smodes_path):
     """Manage global settings of the package"""
     from symmstate.config.settings import settings  # Import the global instance
     updated = False
@@ -112,10 +113,14 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
     if test_dir:
         settings.TEST_DIR = (settings.WORKING_DIR / Path(test_dir)).resolve()
         updated = True
+    if smodes_path: 
+        settings.SMODES_PATH = (settings.WORKING_DIR / Path(smodes_path).resolve())
+        updated = True
 
     if updated:
         settings.save_settings()  # Save the updated settings to file
         click.echo("Settings updated:")
+        click.echo(f"SMODES_PATH:  {settings.SMODES_PATH}")
         click.echo(f"PP_DIR: {settings.PP_DIR}")
         click.echo(f"WORKING_DIR: {settings.WORKING_DIR}")
         click.echo(f"DEFAULT_ECUT: {settings.DEFAULT_ECUT}")
@@ -133,6 +138,7 @@ def show_config():
     """Display current global settings."""
     settings_instance = Settings()
     click.echo("Current Global Settings:")
+    click.echo(f"SMODES_PATH:  {settings_instance.SMODES_PATH}")
     click.echo(f"PP_DIR: {settings_instance.PP_DIR}")
     click.echo(f"WORKING_DIR: {settings_instance.WORKING_DIR}")
     click.echo(f"DEFAULT_ECUT: {settings_instance.DEFAULT_ECUT}")
