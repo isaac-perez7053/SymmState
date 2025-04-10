@@ -1,6 +1,5 @@
 from symmstate import SymmStateCore
 import os
-import warnings
 import subprocess
 import time
 from typing import Optional, Union
@@ -46,37 +45,32 @@ class SlurmFile(SymmStateCore):
     ) -> str:
         """
         Write a SLURM batch script with a customizable MPI execution line.
-        
+
         Args:
             input_file: Name of the input file for the calculation.
             log_file: Name of the file to store output logs.
             batch_name: Name of the batch script to write.
             mpi_command_template: Template for the MPI command line.
             extra_commands: Optional string of additional shell commands to insert after the MPI line.
-            
+
         Returns:
             str: The path to the written batch script.
         """
-        # Define the shebang line (for bash)
-        shebang = "#!/bin/bash\n"
-        
         mpi_line = mpi_command_template.format(
             num_procs=self.num_processors,
             input_file=input_file,
             log=log_file
         )
-        
-        # Prepend the shebang and the existing header to create the final script content.
-        script_content = f"{shebang}{self.batch_header.strip()}\n\n{mpi_line}"
+
+        script_content = f"{self.batch_header.strip()}\n\n{mpi_line}"
         if extra_commands:
             script_content += f"\n\n{extra_commands.strip()}\n"
-        
+
         with open(batch_name, "w") as script_file:
             script_file.write(script_content)
-        
+
         print(f"Wrote batch script to {batch_name}")
         return batch_name
-
 
 
     def all_jobs_finished(self) -> bool:

@@ -12,6 +12,7 @@ from .abinit_parser import AbinitParser
 from .logger import Logger  
 from .data_parser import DataParser
 from .misc import Misc
+from .documentation import Documentation
 
 __all__ = [
     "ParsingError",
@@ -22,5 +23,6 @@ __all__ = [
     "AbinitParser",
     "Logger", 
     "DataParser",
-    "Misc"
+    "Misc",
+    "Documentation"
 ]

@@ -17,7 +17,7 @@ from symmstate.flpz.data_analysis import (
 from symmstate.abinit.abinit_file import AbinitFile
 import click
 import subprocess
-from symmstate.utils import DataParser
+from symmstate.utils import DataParser, Documentation
 
 # Define the run_smodes function directly in this file to avoid circular imports.
 def run_smodes(smodes_input):
@@ -518,6 +518,35 @@ def grab(flexotensor, piezotensor, energy):
             f"Energy located in the file {energy} is:\n"
             f"{energy_value}"
         )
+
+# Create a single Documentation instance.
+docs = Documentation()
+
+# Define constant strings.
+UNIT_CELL_DOC = docs.UNITCELL
+ABINIT_UNIT_CELL_DOC = docs.ABINIT_UNIT_CELL_DOC
+ABINIT_FILE_DOC = docs.ABINIT_FILE_DOC
+SLURM_FILE_DOC = docs.SLURM_FILE_DOC
+
+@cli.command()
+@click.option("--unit-cell", is_flag=True, help="Show extended documentation for the UnitCell class")
+@click.option("--abinit-cell", is_flag=True, help="Show extended documentation for the AbinitUnitCell class")
+@click.option("--abinit-file", is_flag=True, help="Show extended documentation for the AbinitFile class")
+@click.option("--slurm-file", is_flag=True, help="Show extended documentation for the SlurmFile class")
+def examples(unit_cell, abinit_cell, abinit_file, slurm_file):
+    """Displays examples and extended documentation for the SymmState package."""
+    if unit_cell:
+        click.echo(UNIT_CELL_DOC)
+    elif abinit_cell:
+        click.echo(ABINIT_UNIT_CELL_DOC)
+    elif abinit_file:
+        click.echo(ABINIT_FILE_DOC)
+    elif slurm_file:
+        click.echo(SLURM_FILE_DOC)
+    else:
+        click.echo("No example selected. Please specify one of the available options.")
+
+
 
 
 if __name__ == "__main__":

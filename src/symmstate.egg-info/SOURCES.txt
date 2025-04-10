@@ -41,6 +41,7 @@ src/symmstate/templates/template_manager.py
 src/symmstate/utils/__init__.py
 src/symmstate/utils/abinit_parser.py
 src/symmstate/utils/data_parser.py
+src/symmstate/utils/documentation.py
 src/symmstate/utils/exceptions.py
 src/symmstate/utils/file_io.py
 src/symmstate/utils/logger.py
