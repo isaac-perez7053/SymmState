@@ -22,8 +22,23 @@ class PseudopotentialManager(SymmStateCore):
         self.pseudo_registry: Dict[str, str] = self._load_pseudopotentials()
 
     def _load_pseudopotentials(self) -> Dict[str, str]:
-        """ Load existing pseudopotentials from the folder into a dictionary. """
-        return {name: os.path.join(self.folder_path, name) for name in os.listdir(self.folder_path)}
+        """Load existing pseudopotentials from the folder into a dictionary.
+        
+        Only files with allowed extensions are returned.
+        """
+        valid_extensions = ('.psp8', '.psp', '.upf')  # adjust as needed
+        pseudo_dict = {}
+        for name in os.listdir(self.folder_path):
+            full_path = os.path.join(self.folder_path, name)
+            # Only process files (skip directories such as __pycache__)
+            if os.path.isfile(full_path):
+                # Skip files whose names start with __ (e.g., __init__.py)
+                if name.startswith("__"):
+                    continue
+                # Only add files with allowed extensions.
+                if name.endswith(valid_extensions):
+                    pseudo_dict[name] = full_path
+        return pseudo_dict
     
     def add_pseudopotential(self, file_path: str) -> None: 
         """Add a new pseudopotential to the folder and update the dictionary. """

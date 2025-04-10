@@ -57,8 +57,7 @@ This will install all necessary dependencies for SymmState and make it ready for
 - **Symmetry Analysis**: Perform advanced symmetry analysis on solid-state materials.
 - **Flexoelectric Properties**: Calculate flexoelectric properties for various materials and their evolution under particular perturbations.
 - **Piezoelectric Properties**: Evaluate the piezoelectric response of various materials and evolution under particular perturbations.
-- **Abinit Integration**: Interact seamlessly with Abinit for s:q
-imulations.
+- **Abinit Integration**: Interact seamlessly with Abinit for simulations
   
 ## Future Features
 
