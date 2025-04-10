@@ -134,7 +134,7 @@ class AbinitFile(AbinitUnitCell):
             outf.write(f'\npp_dirpath "{pp_dir_path}" \n')
             if len(pseudos) == 0:
                 pseudos = self.vars.get("pseudos", [])
-            concatenated_pseudos = " ".join(pseudos).replace('"', '')
+            concatenated_pseudos = ", ".join(pseudos).replace('"', '')
             outf.write(f'pseudos "{concatenated_pseudos}"\n')
             self._logger.info(f"The Abinit file {output_file} was created successfully!")
 
@@ -478,7 +478,7 @@ kptopt2 2
         lines.append(f'pp_dirpath "{pp_dir_path}"')
         pseudos = self.vars.get("pseudos", [])
         # Remove any embedded double quotes from each pseudo and then join them.
-        concatenated_pseudos = " ".join(pseudo.replace('"', '') for pseudo in pseudos)
+        concatenated_pseudos = ", ".join(pseudo.replace('"', '') for pseudo in pseudos)
         lines.append(f'pseudos "{concatenated_pseudos}"')
         return "\n".join(lines)
 

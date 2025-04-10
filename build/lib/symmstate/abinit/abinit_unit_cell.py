@@ -76,11 +76,17 @@ class AbinitUnitCell(UnitCell):
         keeping the original ordering of atomic sites.
         
         This method calculates:
-        - natom: total number of atoms,
-        - znucl: sorted list of unique atomic numbers,
-        - typat: computed from the original ordering of species,
-        - ntypat: number of unique species,
-        - nband: computed number of bands.
+        - natom: Total number of atoms.
+        - znucl: Sorted list of unique atomic numbers.
+        - typat: Computed from the original ordering of species.
+        - ntypat: Number of unique species.
+        - nband: Computed number of bands.
+        - pseudos: Reorders the pseudopotential list to match the new atomic type order.
+        
+        Example:
+        If the original pseudos list is ["CaRev.psp8", "TiRev.psp8", "ORev.psp8"] and after
+        sorting the unique atomic numbers the new order is [8, 20, 22] (i.e. Oxygen, Calcium, Titanium),
+        then the pseudos list will be updated to ["ORev.psp8", "CaRev.psp8", "TiRev.psp8"].
         """
         # Get the original list of sites (without reordering)
         sites = self.structure.sites
@@ -93,10 +99,10 @@ class AbinitUnitCell(UnitCell):
         typat = [znucl.index(s.Z) + 1 for s in species]
         ntypat = len(znucl)
         
-        # Calculate nband (for example using your external routine)
+        # Calculate nband using an external routine.
         nband = Misc.calculate_nband(self.structure)
-
-        # Update self.vars without reordering the structure:
+        
+        # Update self.vars with the new parameters.
         self.vars.update({
             "natom": natom,
             "znucl": znucl,
@@ -104,6 +110,24 @@ class AbinitUnitCell(UnitCell):
             "ntypat": ntypat,
             "nband": nband,
         })
+
+        # ---- Reorder the pseudos list generically ----
+        # Assume self.vars["pseudos"] exists and is a list with the same length as the original unique znucl.
+        # Create a list of (atomic_number, pseudo_filename) pairs.
+        old_znucl = self.vars.get("znucl", [])
+        old_pseudos = self.vars.get("pseudos", [])
+
+        if old_znucl and old_pseudos and (len(old_znucl) == len(old_pseudos)):
+            # Zip the atomic numbers with their corresponding pseudos.
+            pairs = list(zip(old_znucl, old_pseudos))
+            # Sort the pairs by the atomic number (the first element in the tuple).
+            pairs_sorted = sorted(pairs, key=lambda x: x[0])
+            # Unzip the sorted pairs into new lists.
+            new_znucl, new_pseudos = zip(*pairs_sorted)
+            # Update self.vars with the new ordering.
+            self.vars["znucl"] = list(new_znucl)
+            self.vars["pseudos"] = list(new_pseudos)
+
 
 
     def _derive_abinit_parameters(self):

@@ -9,7 +9,8 @@ class SlurmFile(SymmStateCore):
     Manages creation and execution of SLURM batch scripts with enhanced job monitoring.
     """
 
-    def __init__(self, sbatch_header_source: Union[str, os.PathLike], num_processors: int = 8):
+
+    def __init__(self, sbatch_header_source: Union[str, os.PathLike], num_processors: int = 8, mpi_command_template: str = "mpirun  -np {num_procs} abinit < {input_file} > {log}"):
         """
         Initialize with batch script header and processor count.
 
@@ -20,6 +21,7 @@ class SlurmFile(SymmStateCore):
         super().__init__()
         self.num_processors = num_processors
         self.running_jobs = []
+        self.mpi_command_template = mpi_command_template
 
         # Handle multiline string or file input
         if isinstance(sbatch_header_source, str) and '\n' in sbatch_header_source:
@@ -40,7 +42,6 @@ class SlurmFile(SymmStateCore):
         input_file: str = "input.in",
         log_file: str = "job.log",
         batch_name: str = "job.sh",
-        mpi_command_template: str = "mpirun -np {num_procs} abinit < {input_file} > {log}",
         extra_commands: Optional[str] = None,
     ) -> str:
         """
@@ -59,7 +60,7 @@ class SlurmFile(SymmStateCore):
         # Define the shebang line (for bash)
         shebang = "#!/bin/bash\n"
         
-        mpi_line = mpi_command_template.format(
+        mpi_line = self.mpi_command_template.format(
             num_procs=self.num_processors,
             input_file=input_file,
             log=log_file

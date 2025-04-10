@@ -73,36 +73,64 @@ class AbinitUnitCell(UnitCell):
     def update_unit_cell_parameters(self):
         """
         Updates unit cell parameters in self.vars based on the current structure,
-        keeping the original ordering of atomic sites.
+        preserving the original ordering of atomic sites.
         
         This method calculates:
         - natom: total number of atoms,
-        - znucl: sorted list of unique atomic numbers,
-        - typat: computed from the original ordering of species,
+        - znucl: a sorted list of unique atomic numbers,
+        - typat: re-computed from the original ordering of species (but now using the sorted order),
         - ntypat: number of unique species,
         - nband: computed number of bands.
+        
+        It also reorders the pseudos in self.vars["pseudos"] so that each pseudopotential
+        corresponds correctly with the new sorted order of atomic numbers.
+        
+        The procedure is as follows:
+        1. Determine the original unique atomic numbers (in order of first appearance)
+            and the corresponding pseudopotential order.
+        2. Sort the unique atomic numbers.
+        3. For each sorted atomic number, look up its index in the original order and 
+            reassemble the pseudos list accordingly.
+        4. Recompute the 'typat' list so that each atom’s type index refers to the index
+            in the sorted list.
         """
-        # Get the original list of sites (without reordering)
+        # Get the original list of sites and extract species.
         sites = self.structure.sites
         species = [site.specie for site in sites]
-        
+
         natom = len(sites)
-        # Create a sorted list of unique atomic numbers.
-        znucl = sorted({s.Z for s in species})
-        # Calculate typat from the original ordering:
-        typat = [znucl.index(s.Z) + 1 for s in species]
-        ntypat = len(znucl)
-        
-        # Calculate nband (for example using your external routine)
+        # Preserve the original unique order as they appear.
+        original_znucl = list(dict.fromkeys([s.Z for s in species]))  # e.g. [20, 8, 22]
+        # Original typat follows the original order.
+        original_typat = [original_znucl.index(s.Z) + 1 for s in species]
+        ntypat = len(original_znucl)
+
+        # Calculate the number of bands using an external routine.
         nband = Misc.calculate_nband(self.structure)
 
-        # Update self.vars without reordering the structure:
+        # Get the original pseudos list (assumed to be set in self.vars).
+        original_pseudos = self.vars.get("pseudos", [])
+        if len(original_pseudos) != ntypat:
+            raise ValueError("The number of pseudopotentials does not match the number of unique atom types.")
+
+        # Now sort the unique atomic numbers.
+        sorted_znucl = sorted(original_znucl)  # e.g. [8, 20, 22]
+
+        # Reassemble the pseudos list so that for each sorted atomic number, we
+        # pick the pseudopotential corresponding to the position in the original list.
+        new_pseudos = [original_pseudos[original_znucl.index(z)] for z in sorted_znucl]
+
+        # Recompute typat using the new sorted order.
+        new_typat = [sorted_znucl.index(s.Z) + 1 for s in species]
+
+        # Finally, update self.vars with the new parameters.
         self.vars.update({
             "natom": natom,
-            "znucl": znucl,
-            "typat": typat,
+            "znucl": sorted_znucl,
+            "typat": new_typat,
             "ntypat": ntypat,
             "nband": nband,
+            "pseudos": new_pseudos,
         })
 
 

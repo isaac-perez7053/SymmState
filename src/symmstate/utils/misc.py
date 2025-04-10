@@ -13,9 +13,7 @@ class Misc:
         
         The procedure is as follows:
         1. For each atom in self.structure, sum up the valence electrons 
-            using a predefined mapping.
-        2. Since each band can hold two electrons, nband is equal to the 
-            ceiling of (total_valence_electrons / 2).
+            using a predefined mapping.).
         3. Update self.vars["nband"] with the computed value.
         
         Returns:
@@ -153,5 +151,6 @@ class Misc:
                 # Fallback: use half the atomic number (this is a crude estimate)
                 total_valence += specie.Z 
                 
-        nband = total_valence 
-        return nband
+        nband = total_valence
+        # Figure out why I have to add this 4
+        return nband + 4

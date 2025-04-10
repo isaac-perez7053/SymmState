@@ -10,7 +10,7 @@ TARGET_IRREP = "GM4-"  # Update this with the target irreducible representation
 ABIFILE = "/home/iperez/symmstate_testing/example1_file.abi"
 B_SCRIPT_HEADER = "/home/iperez/symmstate_testing/b-script-preamble.txt"
 
-slurm_obj = SlurmFile(B_SCRIPT_HEADER, num_processors=8)
+slurm_obj = SlurmFile(B_SCRIPT_HEADER, num_processors=8, mpi_command_template="mpirun -hosts=localhost -np {num_procs} abinit {input_file} > {log}")
 energy_calculation = EnergyProgram(name="energy_program_test",
 num_datapoints=12, abi_file=ABIFILE, min_amp=0.0, max_amp=0.7, smodes_input=SMODES_INPUT, target_irrep=TARGET_IRREP, slurm_obj=slurm_obj)
 energy_calculation.run_program()

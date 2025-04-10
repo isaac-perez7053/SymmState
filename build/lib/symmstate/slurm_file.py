@@ -9,7 +9,8 @@ class SlurmFile(SymmStateCore):
     Manages creation and execution of SLURM batch scripts with enhanced job monitoring.
     """
 
-    def __init__(self, sbatch_header_source: Union[str, os.PathLike], num_processors: int = 8):
+
+    def __init__(self, sbatch_header_source: Union[str, os.PathLike], num_processors: int = 8, mpi_command_template: str = "mpirun  -np {num_procs} abinit < {input_file} > {log}"):
         """
         Initialize with batch script header and processor count.
 
@@ -20,6 +21,7 @@ class SlurmFile(SymmStateCore):
         super().__init__()
         self.num_processors = num_processors
         self.running_jobs = []
+        self.mpi_command_template = mpi_command_template
 
         # Handle multiline string or file input
         if isinstance(sbatch_header_source, str) and '\n' in sbatch_header_source:
@@ -40,37 +42,41 @@ class SlurmFile(SymmStateCore):
         input_file: str = "input.in",
         log_file: str = "job.log",
         batch_name: str = "job.sh",
-        mpi_command_template: str = "mpirun -np {num_procs} abinit < {input_file} > {log}",
         extra_commands: Optional[str] = None,
     ) -> str:
         """
         Write a SLURM batch script with a customizable MPI execution line.
-
+        
         Args:
             input_file: Name of the input file for the calculation.
             log_file: Name of the file to store output logs.
             batch_name: Name of the batch script to write.
             mpi_command_template: Template for the MPI command line.
             extra_commands: Optional string of additional shell commands to insert after the MPI line.
-
+            
         Returns:
             str: The path to the written batch script.
         """
-        mpi_line = mpi_command_template.format(
+        # Define the shebang line (for bash)
+        shebang = "#!/bin/bash\n"
+        
+        mpi_line = self.mpi_command_template.format(
             num_procs=self.num_processors,
             input_file=input_file,
             log=log_file
         )
-
-        script_content = f"{self.batch_header.strip()}\n\n{mpi_line}"
+        
+        # Prepend the shebang and the existing header to create the final script content.
+        script_content = f"{shebang}{self.batch_header.strip()}\n\n{mpi_line}"
         if extra_commands:
             script_content += f"\n\n{extra_commands.strip()}\n"
-
+        
         with open(batch_name, "w") as script_file:
             script_file.write(script_content)
-
+        
         print(f"Wrote batch script to {batch_name}")
         return batch_name
+
 
 
     def all_jobs_finished(self) -> bool:
