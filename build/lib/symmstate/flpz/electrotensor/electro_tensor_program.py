@@ -124,7 +124,12 @@ class ElectroTensorProgram(FlpzCore):
                 else:
                     pert_obj.calculate_flexo_of_perturbations()
                     pert_obj.data_analysis(save_plot=True, filename=f"flexo_vs_amplitude_{i}", flexo=True)
-                    self._logger.info(f"Flexoelectric tensors of unstable Phonon {i}:\n{pert_obj.results['flexo']}")
+                    flexo_results = pert_obj.results.get("flexo")
+                    if flexo_results is not None:
+                        self._logger.info(f"Flexoelectric tensors of unstable Phonon {i}:\n{flexo_results}")
+                    else:
+                        self._logger.info(f"No flexoelectric tensors computed for unstable Phonon {i}.")
+
                 # Record the data.
                 data_file_name = f"data_file_{i}.txt"
                 pert_obj.record_data(data_file_name)
