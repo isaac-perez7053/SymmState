@@ -30,22 +30,32 @@ def run_smodes(smodes_input):
         raise RuntimeError(f"SMODES execution failed: {process.stderr}")
     return process.stdout
 
-# Define an ASCII art banner.
+
 BANNER = r"""
- ___                  ___ _        _       
-/ __|_  _ _ __  _ __ / __| |_ __ _| |_ ___ 
-\__ \ || | '  \| '  \\__ \  _/ _` |  _/ -_)
-|___/\_, |_|_|_|_|_|_|___/\__\__,_|\__\___|
-     |__/                                                             
++----------------------------------------------------------+
+|  ___                  ___ _        _                     |
+| / __|_  _ _ __  _ __ / __| |_ __ _| |_ ___               |
+| \__ \ || | '  \| '  \\__ \  _/ _` |  _/ -_)              |
+| |___/\_, |_|_|_|_|_|_|___/\__\__,_|\__\___|              |
+|      |__/                                                |
+|                                                          |
+| Applications of symmetry in solid state physics          |
++----------------------------------------------------------+
 """
 
-@click.group(invoke_without_command=True)
+
+
+class CustomGroup(click.Group):
+    def get_help(self, ctx):
+        base_help = super().get_help(ctx)
+        return BANNER + "\n\n" + "\n\n" + base_help
+
+@click.group(cls=CustomGroup, invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
-    click.echo(BANNER)
-    click.echo("SymmState: Applications of symmetry in solid state physics\n")
+    # Print help (which now includes the banner and additional line) if no command was invoked.
     if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
+        click.echo(cli.get_help(ctx))
 
 @cli.command()
 @click.option("-a", "--add", multiple=True, type=click.Path(), help="Add one or more pseudopotential file paths")
