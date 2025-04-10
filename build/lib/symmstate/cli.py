@@ -44,7 +44,6 @@ BANNER = r"""
 """
 
 
-
 class CustomGroup(click.Group):
     def get_help(self, ctx):
         base_help = super().get_help(ctx)

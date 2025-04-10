@@ -111,17 +111,17 @@ class AbinitFile(AbinitUnitCell):
             outf.write(f"typat {' '.join(map(str, self.vars['typat']))}\n")
 
             outf.write("\n#----------------------------------------\n# Definition of the planewave basis set\n#----------------------------------------\n")
-            outf.write(f"ecut {self.vars.get['ecut', 42]} \n")
+            outf.write(f"ecut {self.vars.get('ecut', 42)} \n")
             if self.vars['ecutsm'] is not None:
                 outf.write(f"ecutsm {self.vars['ecutsm']} \n")
 
             outf.write("\n#--------------------------\n# Definition of the k-point grid\n#--------------------------\n")
-            outf.write(f"nshiftk {self.vars.get['nshiftk', '1']} \n")
+            outf.write(f"nshiftk {self.vars.get('nshiftk', '1')} \n")
             outf.write("kptrlatt\n")
             if self.vars['kptrlatt'] is not None:
                 for i in self.vars['kptrlatt']:
                     outf.write(f"  {' '.join(map(str, i))}\n")
-            outf.write(f"shiftk {' '.join(map(str, self.vars.get['shiftk', '0.5 0.5 0.5']))} \n")
+            outf.write(f"shiftk {' '.join(map(str, self.vars.get('shiftk', '0.5 0.5 0.5')))} \n")
             outf.write(f"nband {self.vars['nband']} \n")
 
             outf.write("\n#--------------------------\n# Definition of the SCF Procedure\n#--------------------------\n")
