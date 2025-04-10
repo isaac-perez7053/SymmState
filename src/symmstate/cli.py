@@ -30,9 +30,22 @@ def run_smodes(smodes_input):
         raise RuntimeError(f"SMODES execution failed: {process.stderr}")
     return process.stdout
 
-@click.group()
-def cli():
-    """SymmState: Applications of symmetry in solid state physics"""
+# Define an ASCII art banner.
+BANNER = r"""
+ ___                  ___ _        _       
+/ __|_  _ _ __  _ __ / __| |_ __ _| |_ ___ 
+\__ \ || | '  \| '  \\__ \  _/ _` |  _/ -_)
+|___/\_, |_|_|_|_|_|_|___/\__\__,_|\__\___|
+     |__/                                                             
+"""
+
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    click.echo(BANNER)
+    click.echo("Applications of symmetry in solid state physics\n")
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 @cli.command()
 @click.option("-a", "--add", multiple=True, type=click.Path(), help="Add one or more pseudopotential file paths")
