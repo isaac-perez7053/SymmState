@@ -61,7 +61,7 @@ class AbinitParser:
         
         if conv_criteria is None:
             raise ValueError("Please specify a convergence criteria")
-        parsed_data['conv_critera'] = conv_criteria
+        parsed_data['conv_criteria'] = conv_criteria
 
         # Remove None values
         return {k: v for k, v in parsed_data.items() if v is not None}
