@@ -1,9 +1,0 @@
-PP_DIR: pseudopotentials
-SMODES_PATH: ../isobyu/smodes
-WORKING_DIR: .
-DEFAULT_ECUT: 50
-SYMM_PREC: 1e-05
-DEFAULT_KPT_DENSITY: 0.25
-TEST_DIR: /Users/isaacperez/Downloads/Personal_Projects/abinit-9.10.3/symmstate_program/tests
-SLURM_HEADER: {'time': '24:00:00', 'nodes': 1, 'ntasks-per-node': 32, 'mem': '64G'}
-ENVIRONMENT: production

@@ -1,11 +1,26 @@
+import os
+import ast
 from pathlib import Path
 from typing import Dict
-import ast
+import importlib.util
+
+def find_package_path(package_name: str = "symmstate") -> str:
+    """
+    Find and return the package path for the given package name using importlib.
+    """
+    spec = importlib.util.find_spec(package_name)
+    if spec is None or spec.submodule_search_locations is None:
+        raise ImportError(f"Cannot find package {package_name}")
+    return spec.submodule_search_locations[0]
 
 class SymmStateSettings:
-    SETTINGS_FILE = Path("settings.txt")
-
     def __init__(self):
+        # Locate the package path and define the config folder within it.
+        pkg_path = find_package_path("symmstate")
+        config_dir = Path(pkg_path) / "config"
+        os.makedirs(config_dir, exist_ok=True)  # Ensure the config folder exists.
+        self.SETTINGS_FILE = config_dir / "settings.txt"
+        
         # If the settings file exists, load its values.
         if self.SETTINGS_FILE.exists():
             self.load_settings()
@@ -61,7 +76,6 @@ class SymmStateSettings:
                     if typ == Path:
                         setattr(self, key, Path(value))
                     elif typ == dict:
-                        # Use ast.literal_eval to safely evaluate the dictionary
                         setattr(self, key, ast.literal_eval(value))
                     else:
                         setattr(self, key, typ(value))
@@ -83,6 +97,6 @@ class SymmStateSettings:
             f.write(f"SLURM_HEADER: {self.SLURM_HEADER}\n")
             f.write(f"ENVIRONMENT: {self.ENVIRONMENT}\n")
 
-# Create a single global instance that will be used throughout the package.
+# Create a single global instance to be used throughout the package.
 settings = SymmStateSettings()
 
