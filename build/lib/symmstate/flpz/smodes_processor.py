@@ -6,7 +6,7 @@ from scipy.sparse.linalg import cg
 import warnings
 from symmstate.abinit import AbinitFile
 from symmstate.flpz import FlpzCore
-from symmstate.config.settings import settings
+from symmstate.config.symm_state_settings import settings
 from symmstate.utils.symmetry_adapted_basis import SymmAdaptedBasis
 
 np.set_printoptions(precision=10)
@@ -96,7 +96,7 @@ class SmodesProcessor(FlpzCore):
         Job submissions are handled by the provided slurm_obj.
         """
         content = "useylm 1\nkptopt 2\nchkprim 0\n"
-        original_coords = self.abinit_file.coordinates_xred.copy()
+        original_coords = self.abinit_file.grab_reduced_coordinates()
         abi_name = "dist_0"
         self.abinit_file.write_custom_abifile(abi_name, content, coords_are_cartesian=False)
         self.abinit_file.run_abinit(
@@ -110,7 +110,7 @@ class SmodesProcessor(FlpzCore):
         for i in range(self.num_sam):
             j = i + 1
             perturbation = np.array(
-                self.abinit_file.coordinates_xcart + (1.88973 * self.disp_mag * self.dist_mat[i])
+                self.abinit_file.grab_cartesian_coordinates() + (1.88973 * self.disp_mag * self.dist_mat[i])
             )
             self.abinit_file.change_coordinates(new_coordinates=perturbation, coords_are_cartesian=True)
             abi_name = f"dist_{j}"
@@ -132,7 +132,7 @@ class SmodesProcessor(FlpzCore):
         All diagnostic messages are logged.
         """
         self._logger.info("Starting _perform_calculations")
-        force_mat_raw = np.zeros((self.num_sam + 1, self.abinit_file.natom, 3), dtype=np.float32)
+        force_mat_raw = np.zeros((self.num_sam + 1, self.abinit_file.vars['natom'], 3), dtype=np.float32)
 
         for sam, abo in enumerate(self.jobs_ran_abo):
             with open(abo) as f:
@@ -146,7 +146,7 @@ class SmodesProcessor(FlpzCore):
                     line_start = line_num + 1
                     break
 
-            for line_num in range(line_start, line_start + self.abinit_file.natom):
+            for line_num in range(line_start, line_start + self.abinit_file.vars['natom']):
                 words = abo_lines[line_num].split()
                 force_mat_raw[sam, atom_ind, 0] = float(words[1])
                 force_mat_raw[sam, atom_ind, 1] = float(words[2])
@@ -155,9 +155,9 @@ class SmodesProcessor(FlpzCore):
 
         self._logger.info(f"Force matrix raw:\n{force_mat_raw}")
 
-        force_list = np.zeros((self.num_sam, self.abinit_file.natom, 3), dtype=np.float32)
+        force_list = np.zeros((self.num_sam, self.abinit_file.vars['natom'], 3), dtype=np.float32)
         for sam in range(self.num_sam):
-            for i in range(self.abinit_file.natom):
+            for i in range(self.abinit_file.vars['natom']):
                 for j in range(3):
                     force_list[sam, i, j] = force_mat_raw[sam + 1, i, j] - force_mat_raw[0, i, j]
 
@@ -169,7 +169,7 @@ class SmodesProcessor(FlpzCore):
         mass_vector = np.zeros(self.num_sam, dtype=np.float32)
         for m in range(self.num_sam):
             this_mass = 0
-            for n in range(self.abinit_file.ntypat):
+            for n in range(self.abinit_file.vars['ntypat']):
                 if self.sam_atom_label[m] == self.type_list[n]:
                     this_mass = self.mass_list[n]
                     mass_vector[m] = this_mass
@@ -226,24 +226,24 @@ class SmodesProcessor(FlpzCore):
         self.dyn_freqs = [[freq_thz[i], freq_cm[i]] for i in range(self.num_sam)]
         self.fc_evals = fc_eval[idx_dyn]
 
-        dynevecs = np.zeros((self.num_sam, self.abinit_file.natom, 3), dtype=np.float32)
+        dynevecs = np.zeros((self.num_sam, self.abinit_file.vars['natom'], 3), dtype=np.float32)
         for evec in range(self.num_sam):
-            real_dynevec = np.zeros((self.abinit_file.natom, 3), dtype=np.float32)
+            real_dynevec = np.zeros((self.abinit_file.vars['natom'], 3), dtype=np.float32)
             for s in range(self.num_sam):
                 real_dynevec += dynevecs_sam[s, evec] * self.dist_mat[s, :, :]
             dynevecs[evec, :, :] = real_dynevec
 
         self._logger.info(f"DEBUG: Dynevecs:\n{dynevecs}")
 
-        mass_col = np.zeros((self.abinit_file.natom, 3), dtype=np.float32)
+        mass_col = np.zeros((self.abinit_file.vars['natom'], 3), dtype=np.float32)
         atomind = 0
-        for atype in range(self.abinit_file.ntypat):
+        for atype in range(self.abinit_file.vars['ntypat']):
             for j in range(self.type_count[atype]):
                 mass_col[atomind, :] = np.sqrt(self.mass_list[atype])
                 atomind += 1
 
-        phon_disp_eigs = np.zeros((self.num_sam, self.abinit_file.natom, 3), dtype=np.float32)
-        redmass_vec = np.zeros((self.abinit_file.natom, 1), dtype=np.float32)
+        phon_disp_eigs = np.zeros((self.num_sam, self.abinit_file.vars['natom'], 3), dtype=np.float32)
+        redmass_vec = np.zeros((self.abinit_file.vars['natom'], 1), dtype=np.float32)
         for mode in range(self.num_sam):
             phon_disp_eigs[mode, :, :] = np.divide(dynevecs[mode, :, :], mass_col)
             mag_squared = np.sum(phon_disp_eigs[mode, :, :]**2)

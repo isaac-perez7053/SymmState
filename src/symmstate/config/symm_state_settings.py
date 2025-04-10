@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict
 import ast
 
-class Settings:
+class SymmStateSettings:
     SETTINGS_FILE = Path("settings.txt")
 
     def __init__(self):
@@ -84,5 +84,5 @@ class Settings:
             f.write(f"ENVIRONMENT: {self.ENVIRONMENT}\n")
 
 # Create a single global instance that will be used throughout the package.
-settings = Settings()
+settings = SymmStateSettings()
 

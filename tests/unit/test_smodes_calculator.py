@@ -4,10 +4,9 @@ import os
 import numpy as np
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import subprocess
 
-# Import the Settings class so we can use its values.
-from symmstate.config.settings import Settings
+# Import the settings class so we can use its values.
+from symmstate.config.symm_state_settings import settings
 # Import your SmodesProcessor from its package.
 from symmstate.flpz.smodes_processor import SmodesProcessor
 
@@ -16,8 +15,29 @@ class DummySlurm:
     def __init__(self):
         self.running_jobs = []
     def wait_for_jobs_to_finish(self, check_time=60, check_once=False):
-        # For testing, simply do nothing.
+        # For testing purposes, do nothing.
         pass
+
+# A helper dummy function to simulate SMODES output.
+def simulate_smodes_output():
+    # We supply valid dummy parameters:
+    dummy_params = [
+        [3.0, 3.0, 3.0],  # acell
+        np.array([[0.0, 7.2546934054, 0.0],
+                  [0.0, 0.0, 7.2546934054],
+                  [7.2546934054, 0.0, 0.0]]),  # rprim
+        np.array([[0.0, 0.0, 0.0],
+                  [0.5, 0.5, 0.5],
+                  [0.5, 0.5, 0.0]]),  # coordinates (3 atoms)
+        False,  # coords_are_cartesian
+        ["Ca", "Ti", "O"]  # elements
+    ]
+    # The second element is a tuple of dummy additional data.
+    dummy_extra = (True, True, True, [1], ["H"], 1, [1.0],
+                   np.array([[0.0, 0.0, 0.0]]),
+                   np.array([[[1.0, 0.0, 0.0]]]),
+                   ["H"])
+    return (dummy_params, dummy_extra)
 
 class TestSmodesProcessor(unittest.TestCase):
     def setUp(self):
@@ -27,40 +47,86 @@ class TestSmodesProcessor(unittest.TestCase):
         os.chdir(self.test_dir.name)
         
         # Create a dummy Abinit file.
+        content = """
+useylm 1  # Use of spherical harmonics
+kptopt 2  # Takes into account time-reversal symmetry.
+
+# Allows the use of cells that are non-primitive
+chkprim 0
+
+#Definition of unit cell
+#***********************
+acell 3*1.0
+xred
+   0.0000000000 0.0000000000 0.0000000000
+   0.5000000000 0.5000000000 0.5000000000
+   0.5000000000 0.5000000000 0.0000000000
+   0.5000000000 0.0000000000 0.5000000000
+   0.0000000000 0.5000000000 0.5000000000
+rprim
+   0.0000000000 7.2546934054 0.0000000000
+   0.0000000000 0.0000000000 7.2546934054
+   7.2546934054 0.0000000000 0.0000000000
+
+#Definition of atoms
+#************************
+natom 5
+ntypat 3
+znucl 20 22 8
+typat 1 2 3*3
+
+#Definition of the planewave basis set
+#*************************************
+ecut 70
+ecutsm 0.5 #Smoothing energy needed for lattice parameter optimization.
+
+#Definition of the k-point grid
+#******************************
+nshiftk 1
+kptrlatt
+ 6   0   0
+ 0   6   0
+ 0   0   6
+shiftk 0.5 0.5 0.5
+nband 52
+
+#Definition of SCF Procedure
+#***************************
+nstep 50
+diemac 4.0
+ixc -116133    #GGA specified by pseudopotential files
+toldfe 1.0d-9
+
+pp_dirpath "../"
+pseudos "CaRev.psp8, TiRev.psp8, ORev.psp8"
+"""
         self.abi_file = "dummy.abi"
         with open(self.abi_file, "w") as f:
-            f.write(
-                "acell 1.0 1.0 1.0\n"
-                "rprim\n"
-                "1.0 0.0 0.0\n"
-                "0.0 1.0 0.0\n"
-                "0.0 0.0 1.0\n"
-                "xred\n"
-                "0.0 0.0 0.0\n"
-            )
+            f.write(content)
         
         # Create a dummy SMODES input file.
+        smodes_content = """
+7.2546810033  7.2546810033  7.2546810033
+221
+1 1 1  90 90 90
+3
+Ca a
+Ti b
+O c
+1
+GM
+"""
         self.smodes_input = "dummy_smodes.in"
         with open(self.smodes_input, "w") as f:
-            f.write("dummy smodes input")
+            f.write(smodes_content)
         
-        self.target_irrep = "A1"
+        self.target_irrep = "GM4-"
         self.slurm_obj = DummySlurm()
         
-        # Patch the symmetry‐adapted basis function to return dummy values.
-        # The dummy tuple returns:
-        # transmodes=True, isir=True, israman=True, type_count=[1],
-        # type_list=["H"], num_sam=1, mass_list=[1.0],
-        # pos_mat_cart = [[0.0, 0.0, 0.0]],
-        # dist_mat = [[[1.0, 0.0, 0.0]]],
-        # sam_atom_label = ["H"]
-        dummy_smodes_output = (None, (True, True, True, [1], ["H"], 1, [1.0],
-                                       np.array([[0.0, 0.0, 0.0]]),
-                                       np.array([[[1.0, 0.0, 0.0]]]),
-                                       ["H"]))
+        # Patch the symmetry-adapted basis function to return our dummy SMODES output.
         self.symm_patch = patch(
             'symmstate.utils.symmetry_adapted_basis.SymmAdaptedBasis.symmatry_adapted_basis',
-            return_value=dummy_smodes_output
+            return_value=simulate_smodes_output()
         )
         self.mock_symm = self.symm_patch.start()
         
@@ -78,10 +144,11 @@ class TestSmodesProcessor(unittest.TestCase):
         # Set required dummy attributes on the contained AbinitFile.
         self.processor.abinit_file.coordinates_xred = np.array([[0.0, 0.0, 0.0]])
         self.processor.abinit_file.coordinates_xcart = np.array([[0.0, 0.0, 0.0]])
-        self.processor.abinit_file.natom = 1
-        self.processor.abinit_file.ntypat = 1
+        self.processor.abinit_file.vars['natom'] = 1
+        self.processor.abinit_file.vars['ntypat'] = 1
+        
         # Override methods to prevent real file operations.
-        self.processor.abinit_file.write_custom_abifile = lambda fname, cont, coords_are_cartesian=False: None
+        self.processor.abinit_file.write_custom_abifile = lambda fname, cont, coords_are_cartesian=False, pseudos=[]: None
         self.processor.abinit_file.run_abinit = lambda **kwargs: None
         self.processor.abinit_file.change_coordinates = lambda new_coords, coords_are_cartesian: None
         
@@ -123,7 +190,7 @@ class TestSmodesProcessor(unittest.TestCase):
         # Set fc_evals and dummy phonon vectors.
         self.processor.fc_evals = np.array([-25, 10])
         # Create dummy phonon vectors with shape (num_sam, natom, 3); here num_sam = 1, natom = 1.
-        self.processor.phonon_vecs = np.array([[[0.0, 1.0, 0.0]], [[1.0, 0.0, 0.0]]], dtype=np.float64)
+        self.processor.phonon_vecs = np.array([[[0.0, 1.0, 0.0]]], dtype=np.float64)
         unstable = self.processor.unstable_phonons()
         self.assertIsInstance(unstable, list)
         self.assertEqual(len(unstable), 1)
@@ -149,4 +216,6 @@ class TestSmodesProcessor(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
 

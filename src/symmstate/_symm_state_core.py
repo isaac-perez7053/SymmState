@@ -14,21 +14,6 @@ class SymmStateCore:
 
     def __init__(self):
         pass
-
-    def log_or_print(
-        self, 
-        message: str, 
-        logger: logging.Logger = None, 
-        level: int = logging.INFO
-    ) -> None:
-        """
-        Logs a message using the global logger by default.
-        """
-        if logger is None: 
-            print(message)
-        else: 
-            logger = logger or self.__class__._logger  # Use class-level logger
-            logger.log(level, message)
     
     @staticmethod
     def find_package_path(package_name='symmstate'):

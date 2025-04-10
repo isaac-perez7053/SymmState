@@ -35,6 +35,22 @@ class Logger:
         """Reconfigure the global logger."""
         cls._logger = cls.configure_logging(name=name, level=level, file_path=file_path)
 
+
+    @staticmethod
+    def log_or_print(
+        message: str, 
+        logger: logging.Logger = None, 
+        level: int = logging.INFO
+    ) -> None:
+        """
+        Logs a message using the global logger by default.
+        """
+        if logger is None: 
+            print(message)
+        else: 
+            logger = logger 
+            logger.log(level, message)
+
     @property
     def logger(self) -> logging.Logger:
         """Return the global logger."""
@@ -42,6 +58,7 @@ class Logger:
             # Fallback: Configure logger if it hasn't been set
             Logger._logger = self.configure_logging(name="symmstate", level=logging.INFO, file_path="symmstate.log")
         return Logger._logger
+
 
 # For convenience, you can expose a module-level logger instance:
 global_logger: logging.Logger = Logger().logger

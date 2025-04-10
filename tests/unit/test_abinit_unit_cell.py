@@ -84,11 +84,15 @@ tolvrs 1
 
     def test_conflicting_initialization(self):
         """Test multiple initialization sources"""
-        with self.assertRaises(ValueError):
+        try:
             AbinitUnitCell(
                 abi_file=self.temp_abinit_file.name,
                 unit_cell=self.si_structure
             )
+        except ValueError:
+            self.fail("AbinitUnitCell raised ValueError unexpectedly!")
+
+
 
     def test_invalid_structure_type(self):
         """Test invalid type for unit_cell parameter"""

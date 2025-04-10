@@ -117,10 +117,6 @@ class TemplateManager(SymmStateCore):
 
         return "\n".join(output_lines) + "\n"
 
-
-
-
-
     def remove_template(self, template_name: str):
         """Remove template from registry and filesystem"""
         if template_name in self.template_registry:

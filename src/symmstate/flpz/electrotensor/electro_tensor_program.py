@@ -1,4 +1,4 @@
-from symmstate.config.settings import settings
+from symmstate.config.symm_state_settings import settings
 from symmstate.flpz.smodes_processor import SmodesProcessor
 from symmstate.flpz.perturbations import Perturbations
 from symmstate.flpz import FlpzCore

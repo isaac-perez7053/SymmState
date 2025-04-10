@@ -13,15 +13,15 @@ class UnitCell(SymmStateCore):
     Defines the UnitCell class which contains all the necessary information of a UnitCell.
 
     Initialization:
-      - Directly input acell (array), rprim (ndarray), coordinates (ndarray), etc.
-      - Use a symmetry adapted basis
-      - Use pymatgen structure
-
+      - You can provide the acell, rprim, coordinates, etc. manually (or via a pymatgen Structure),
+        or specify a SMODES file and target irreducible representation. When the SMODES inputs are
+        provided, the symmetry-adapted basis is calculated and manual inputs are ignored.
+      
     Public Methods:
-      - find_space_group(): Returns space group of the UnitCell
-      - grab_reduced_coordinates(): Returns the reduced coordinates of the UnitCell
-      - grab_cartesian_coordinates(): Returns the cartesian coordinates of the UnitCell
-    """  
+      - find_space_group(): Returns space group of the UnitCell.
+      - grab_reduced_coordinates(): Returns the reduced coordinates of the UnitCell.
+      - grab_cartesian_coordinates(): Returns the cartesian coordinates of the UnitCell.
+    """
 
     def __init__(
         self,
@@ -37,36 +37,24 @@ class UnitCell(SymmStateCore):
         symm_prec: float = 1e-5
     ):
         """
-        Initialize the class through either:
-        1. Direct structural parameters, or
-        2. SMODES file and target irreducible representation
-        
-        Parameters are mutually exclusive between these two modes.
+        Initialize the UnitCell.
+
+        If a SMODES file and target irreducible representation are provided, the symmetry‐adapted basis
+        is calculated and its output is used (any manual inputs are ignored). Otherwise, if a pre‐built
+        structure is provided, it is used directly; if not, all manual parameters must be provided.
         """
-
-        # Handle SMODES file initialization
+        # If SMODES input is provided, always use it to determine the structural parameters.
         if smodes_file and target_irrep:
-            # Validate no structural parameters provided
-            struct_params = [acell, rprim, coordinates, coords_are_cartesian, elements]
-            if any(p is not None for p in struct_params):
-                raise ValueError("Structural parameters cannot be provided with smodes_file and target_irrep")
-
-            # Validate file existence
             if not os.path.isfile(smodes_file):
                 raise FileNotFoundError(f"SMODES file not found: {smodes_file}")
-
-            # Load parameters from SMODES file
-            params, _ = SymmAdaptedBasis.symmatry_adapted_basis(
-                smodes_file, target_irrep, symm_prec
-            )
+            # Overwrite any manual parameters with those returned by SMODES.
+            params, _ = SymmAdaptedBasis.symmatry_adapted_basis(smodes_file, target_irrep, symm_prec)
             acell, rprim, coordinates, coords_are_cartesian, elements = params
-
 
         if structure:
             self.structure = structure
-
         else:
-            # Validate parameters if not using Structure
+            # Ensure that all required parameters are provided when no structure is given.
             required_fields = {
                 "acell": acell,
                 "rprim": rprim,
@@ -78,7 +66,7 @@ class UnitCell(SymmStateCore):
             if missing:
                 raise ValueError(f"Missing parameters: {', '.join(missing)}")
             
-            # Build structure from parameters
+            # Build structure from provided parameters.
             acell = np.array(acell, dtype=float)
             rprim = np.array(rprim, dtype=float)
             coordinates = np.array(coordinates, dtype=float)
@@ -92,21 +80,21 @@ class UnitCell(SymmStateCore):
                 coords_are_cartesian=coords_are_cartesian
             )
 
-        # Always set coordinates
+        # Set coordinates from the structure.
         self.coordinates_xred = self.structure.frac_coords
         self.coordinates_xcart = self.structure.cart_coords
         self.clean_reduced_coordinates()
 
     def grab_reduced_coordinates(self):
-        """Grabs the reduced coordinates of the UnitCell"""
+        """Return a copy of the reduced (fractional) coordinates."""
         return np.array(self.structure.frac_coords)
 
     def grab_cartesian_coordinates(self):
-        """Grabs the cartesian coordinates of the UnitCell"""
+        """Return a copy of the cartesian coordinates."""
         return np.array(self.structure.cart_coords)
 
     def find_space_group(self):
-        """Calculates and returns the space group of the unit cell."""
+        """Calculate and return the space group of the unit cell."""
         analyzer = SpacegroupAnalyzer(self.structure)
         return (analyzer.get_space_group_number(), analyzer.get_space_group_symbol())
 
@@ -115,77 +103,52 @@ class UnitCell(SymmStateCore):
         Apply a given perturbation to the unit cell coordinates and return a new UnitCell.
 
         Args:
-            perturbation (np.ndarray): A numpy array representing the perturbation to be applied.
-            coords_are_cartesian (bool): If True, treats perturbation as cartesian, else reduced.
+            perturbation (np.ndarray): Array representing the perturbation.
+            coords_are_cartesian (bool): If True, perturbation is cartesian; otherwise, it is fractional.
 
         Returns:
-            UnitCell: A new instance of UnitCell with perturbed coordinates.
+            UnitCell: A new UnitCell instance with the perturbed coordinates.
         """
-
-        # Ensure the perturbation has the correct shape
         perturbation = np.array(perturbation, dtype=float)
         if perturbation.shape != self.structure.frac_coords.shape:
-            raise ValueError(
-                "Perturbation must have the same shape as the fractional coordinates."
-            )
+            raise ValueError("Perturbation must match the shape of the fractional coordinates.")
 
-        # Calculate new fractional coordinates by adding the perturbation
-        if coords_are_cartesian:
-            new_frac_coords = self.structure.cart_coords + perturbation
-        else:
-            new_frac_coords = self.structure.frac_coords + perturbation
-
-        # Create a new Structure object with the updated fractional coordinates
+        new_frac_coords = (self.structure.cart_coords + perturbation) if coords_are_cartesian else (self.structure.frac_coords + perturbation)
         perturbed_structure = Structure(
             lattice=self.structure.lattice,
             species=self.structure.species,
             coords=new_frac_coords,
-            coords_are_cartesian=coords_are_cartesian,  # Ensure coordinates are treated as fractional
+            coords_are_cartesian=coords_are_cartesian
         )
-
-        # Return a new instance of UnitCell with the perturbated structure
         return UnitCell(structure=perturbed_structure)
 
     def _round_to_nearest(self, value):
-        # Convert value to Decimal for better precision
         d = Decimal(str(value))
-        # Round to the nearest number with up to a reasonable precision
         rounded_decimal = d.quantize(Decimal('1e-15'), rounding=ROUND_HALF_UP)
-        # Convert the Decimal to a float
         return float(rounded_decimal)
 
-    # TODO: I need to ensure to fix the sign as positive otherwise, I could run into some floating point errors with 
-    # Abinit
     def clean_reduced_coordinates(self):
-        # Copy the array to avoid modifying the original
+        """Clean the fractional coordinates to remove tiny numerical noise."""
         cleaned_arr = np.copy(self.structure.frac_coords)
-        
-        # Function to round, and check tiny numbers
+
         def clean_value(x):
-            # Round up if ending with .9999... to the nearest integer
             if abs(x - self._round_to_nearest(x)) < 1e-9:
                 return self._round_to_nearest(x)
-            # Set values close to zero (on the order of e-17) to zero
             elif abs(x) < 1e-16:
                 return 0.0
-            # Return the number itself if no conditions are met
             else:
                 return x
-        
-        # Vectorize the cleaning function for the numpy array
-        vectorized_clean_value = np.vectorize(clean_value)
 
-        # Apply function to each element
+        vectorized_clean_value = np.vectorize(clean_value)
         cleaned_arr = vectorized_clean_value(cleaned_arr)
 
-        # Update coordinates to used clean array. 
         self.structure = Structure(
             lattice=self.structure.lattice,
             species=self.structure.species,
             coords=cleaned_arr,
-            coords_are_cartesian=False,
+            coords_are_cartesian=False
         )
-    
 
     def __repr__(self):
         return str(self.structure)
+

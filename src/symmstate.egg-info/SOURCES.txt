@@ -18,7 +18,7 @@ src/symmstate/abinit/abinit_convergence_file.py
 src/symmstate/abinit/abinit_file.py
 src/symmstate/abinit/abinit_unit_cell.py
 src/symmstate/config/__init__.py
-src/symmstate/config/settings.py
+src/symmstate/config/symm_state_settings.py
 src/symmstate/flpz/__init__.py
 src/symmstate/flpz/data_analysis.py
 src/symmstate/flpz/flpz_core.py
@@ -39,11 +39,13 @@ src/symmstate/pseudopotentials/pseudopotential_manager.py
 src/symmstate/templates/__init__.py
 src/symmstate/templates/template_manager.py
 src/symmstate/utils/__init__.py
+src/symmstate/utils/abinit_parser.py
+src/symmstate/utils/data_parser.py
 src/symmstate/utils/exceptions.py
 src/symmstate/utils/file_io.py
 src/symmstate/utils/logger.py
+src/symmstate/utils/misc.py
 src/symmstate/utils/numerical.py
-src/symmstate/utils/parsers.py
 src/symmstate/utils/symmetry_adapted_basis.py
 src/symmstate/vasp/__init__.py
 src/symmstate/vasp/vasp_convergence_file.py

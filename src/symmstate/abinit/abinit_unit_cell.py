@@ -2,10 +2,10 @@ from symmstate.unit_cell_module import UnitCell
 import numpy as np
 import copy
 from pymatgen.core import Element
-# from symmstate.utils.logger import configure_logging
 from typing import Optional, List
-from symmstate.utils.parsers import AbinitParser
+from symmstate.utils.abinit_parser import AbinitParser
 from pymatgen.core import Structure, Lattice, Element
+from symmstate.utils.misc import Misc
 
 class AbinitUnitCell(UnitCell):
     """
@@ -21,12 +21,6 @@ class AbinitUnitCell(UnitCell):
         symm_prec: float = 1e-5
     ):
         self.vars = {}  # Initialize empty dictionary first
-
-        # Validate initialization method
-        if (abi_file is None) or (smodes_input is None):
-            init_methods = [abi_file, unit_cell, smodes_input]
-            if sum(x is not None for x in init_methods) != 1:
-                raise ValueError("Specify exactly one initialization method")
 
 
         if abi_file:
@@ -44,13 +38,23 @@ class AbinitUnitCell(UnitCell):
                 raise ValueError("No coordinates found in Abinit file")
 
             # Initialize parent class with parsed parameters
-            super().__init__(
-                acell=self.vars['acell'],
-                rprim=self.vars['rprim'],
-                coordinates=coordinates,
-                coords_are_cartesian=coords_are_cartesian,
-                elements=self._convert_znucl_typat()
-            )
+            if (smodes_input is not None) and (target_irrep is not None):
+                super().__init__(
+                    smodes_file=smodes_input,
+                    target_irrep=target_irrep,
+                    symm_prec=symm_prec
+                )
+                # Update parameters with new cell
+                self.update_unit_cell_parameters()
+ 
+            else:
+                super().__init__(
+                    acell=self.vars['acell'],
+                    rprim=self.vars['rprim'],
+                    coordinates=coordinates,
+                    coords_are_cartesian=coords_are_cartesian,
+                    elements=self._convert_znucl_typat(),
+                )
 
         elif unit_cell:
             if not isinstance(unit_cell, Structure):
@@ -58,17 +62,48 @@ class AbinitUnitCell(UnitCell):
             super().__init__(structure=unit_cell)
             self._derive_abinit_parameters()
         else:
-            super().__init__(
-                smodes_file=smodes_input,
-                target_irrep=target_irrep,
-                symm_prec=symm_prec
-            )
+            raise ValueError("Provide a valid input for initailization")
 
         # Ensure an instance of xred and xcart are included in the variable dictionary 
         if 'xred' not in self.vars:
             self.vars['xred'] = np.array(self.structure.frac_coords)
         elif 'xcart' not in self.vars:
             self.vars['xcart'] = np.array(self.structure.cart_coords)
+
+    def update_unit_cell_parameters(self):
+        """
+        Updates unit cell parameters in self.vars based on the current structure,
+        keeping the original ordering of atomic sites.
+        
+        This method calculates:
+        - natom: total number of atoms,
+        - znucl: sorted list of unique atomic numbers,
+        - typat: computed from the original ordering of species,
+        - ntypat: number of unique species,
+        - nband: computed number of bands.
+        """
+        # Get the original list of sites (without reordering)
+        sites = self.structure.sites
+        species = [site.specie for site in sites]
+        
+        natom = len(sites)
+        # Create a sorted list of unique atomic numbers.
+        znucl = sorted({s.Z for s in species})
+        # Calculate typat from the original ordering:
+        typat = [znucl.index(s.Z) + 1 for s in species]
+        ntypat = len(znucl)
+        
+        # Calculate nband (for example using your external routine)
+        nband = Misc.calculate_nband(self.structure)
+
+        # Update self.vars without reordering the structure:
+        self.vars.update({
+            "natom": natom,
+            "znucl": znucl,
+            "typat": typat,
+            "ntypat": ntypat,
+            "nband": nband,
+        })
 
 
     def _derive_abinit_parameters(self):
@@ -81,7 +116,7 @@ class AbinitUnitCell(UnitCell):
         
         # Update vars
         self.vars.update({
-            "acell": list(self.structure.lattice.abc),
+            "acell": self.structure.lattice.abc,
             "rprim": np.array(rprim),
             "znucl": znucl,
             "typat": typat,

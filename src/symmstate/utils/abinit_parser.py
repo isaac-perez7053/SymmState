@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union
 import numpy as np
 
 class AbinitParser:
@@ -24,7 +24,7 @@ class AbinitParser:
             'rprim': AbinitParser._parse_matrix(content, 'rprim', float),
             coord_type: AbinitParser._parse_matrix(content, coord_type, float) if coord_type else None,
             'znucl': AbinitParser._parse_array(content, 'znucl', int),
-            'typat': AbinitParser._parse_typat(content),  # Special handling for typat
+            'typat': AbinitParser._parse_array(content, 'typat', int), 
             'ecut': AbinitParser._parse_scalar(content, 'ecut', int),
             'ecutsm': AbinitParser._parse_scalar(content, 'ecutsm', float),
             'nshiftk': AbinitParser._parse_scalar(content, 'nshiftk', int),
@@ -67,39 +67,53 @@ class AbinitParser:
         return {k: v for k, v in parsed_data.items() if v is not None}
 
     @staticmethod
-    def _parse_typat(content: str) -> Optional[List[int]]:
-        """Handle typat values like '1 2 3*3' -> [1, 2, 3, 3, 3]"""
-        match = re.search(r'typat\s+(.*?)\n', content)
+    def _parse_array(content: str, param_name: str, dtype: type) -> Union[List, None]:
+        """Parse values for a given parameter name with specified data type.
+
+        Handles multiplicity like 'param_name 1 2 1.0*3' or 'key 4 5 6.2*2'
+        and returns expanded list with elements converted to given dtype.
+        """
+        regex_pattern = rf"^{param_name}\s+([^\n]+)"
+        match = re.search(regex_pattern, content, re.MULTILINE)
+
         if not match:
             return None
-        tokens = match.group(1).split()
-        expanded = []
+
+        tokens = match.group(1).replace(',', ' ').split()
+        result = []
+
         for token in tokens:
             if '*' in token:
-                val, count = token.split('*')
-                expanded.extend([int(val)] * int(count))
+                parts = token.split('*')
+                if len(parts) == 2:
+                    # Switch order: the left side is the count and the right is the value.
+                    count_str, val = parts
+                    try:
+                        count = int(count_str)
+                    except ValueError:
+                        count = int(float(count_str))  # Handle case where count may be a float
+                    result.extend([dtype(val)] * count)
             else:
-                expanded.append(int(token))
-        return expanded
+                result.append(dtype(token))
 
-    @staticmethod
-    def _parse_array(content: str, key: str, dtype: type) -> Union[List, None]:
-        match = re.search(fr"{key}\s+(.*?)\n", content)
-        if not match:
-            return None
-        tokens = match.group(1).replace(',', ' ').split()
-        return [dtype(x) for x in tokens]
+        return result
+
 
     @staticmethod
     def _parse_matrix(content: str, key: str, dtype: type) -> Union[np.ndarray, None]:
-        """Improved matrix parsing"""
+        """Improved matrix parsing that allows negative numbers.
+
+        Searches for a line starting with the key and then reads subsequent lines 
+        that start with either a digit or a minus sign.
+        """
         lines = content.split('\n')
         for i, line in enumerate(lines):
-            if re.fullmatch(rf'\s*{key}\s*', line.strip()):
+            if re.fullmatch(rf'\s*{key}\s*', line):
                 matrix = []
                 for j in range(i + 1, len(lines)):
                     next_line = lines[j].strip()
-                    if not next_line or re.match(r'^\D', next_line):
+                    # Allow lines starting with '-' or a digit.
+                    if not next_line or not re.match(r'^[-\d]', next_line):
                         break
                     matrix.append([dtype(x) for x in next_line.split()])
                 return np.array(matrix) if matrix else None
@@ -108,4 +122,8 @@ class AbinitParser:
     @staticmethod
     def _parse_scalar(content: str, key: str, dtype: type) -> Union[type, None]:
         match = re.search(fr"{key}\s+([\d\.+-dDeE]+)", content)
-        return dtype(match.group(1)) if match else None
+        if match:
+            # Replace 'd' or 'D' with 'e' for compatibility with Python floats
+            value = match.group(1).replace('d', 'e').replace('D', 'e')
+            return dtype(value)
+        return None

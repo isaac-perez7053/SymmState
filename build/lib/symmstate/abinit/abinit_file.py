@@ -1,15 +1,11 @@
 from . import AbinitUnitCell
-import numpy as np
 import os
-import re
 import subprocess
 import copy
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
-from symmstate import SymmStateCore
 from typing import Optional, List
 from symmstate.slurm_file import SlurmFile
-import logging
-from pymatgen.core import Structure, Lattice, Element
+from pymatgen.core import Structure
 
 class AbinitFile(AbinitUnitCell):
     """
@@ -41,15 +37,14 @@ class AbinitFile(AbinitUnitCell):
         )
 
         if abi_file is not None:
-            self.log_or_print(f"Name of abinit file: {abi_file}", logger=self._logger)
+            self._logger.info(f"Name of abinit file: {abi_file}")
             self.file_name: str = str(abi_file).replace(".abi", "")
         else:
             self.file_name = "default_abinit_file"
 
         # Save it as self.slurm_obj. If none is supplied, log a warning.
         if slurm_obj is None:
-            self.log_or_print("No SlurmFile object supplied; job submission may not work as intended.",
-                              logger=self._logger, level=logging.WARNING)
+            self._logger.info("No SlurmFile object supplied; job submission may not work as intended.")
             
         self.slurm_obj: Optional[SlurmFile] = slurm_obj
 
@@ -98,7 +93,7 @@ class AbinitFile(AbinitUnitCell):
             if coords_are_cartesian:
                 outf.write("xcart\n")
                 coordinates = self.vars['xcart']
-                self.log_or_print(f"Coordinates to be written: {coordinates}", logger=self._logger)
+                self._logger.info(f"Coordinates to be written: {coordinates}")
 
                 for coord in coordinates:
                     outf.write(f"  {'  '.join(map(str, coord))}\n")
@@ -137,13 +132,11 @@ class AbinitFile(AbinitUnitCell):
             # Use pseudopotential information parsed into self.vars.
             pp_dir_path = PseudopotentialManager().folder_path
             outf.write(f'\npp_dirpath "{pp_dir_path}" \n')
-
             if len(pseudos) == 0:
                 pseudos = self.vars.get("pseudos", [])
-                
-            concatenated_pseudos = " ".join(pseudos)
-            outf.write(f'pseudos "{concatenated_pseudos}" \n')
-            self.log_or_print(f"The Abinit file {output_file} was created successfully!", logger=self._logger)
+            concatenated_pseudos = " ".join(pseudos).replace('"', '')
+            outf.write(f'pseudos "{concatenated_pseudos}"\n')
+            self._logger.info(f"The Abinit file {output_file} was created successfully!")
 
 
     def run_abinit(
@@ -178,31 +171,31 @@ class AbinitFile(AbinitUnitCell):
                     log_file=log,
                     batch_name=batch_name,
                 )
-                self.log_or_print(f"Batch script created: {script_created}", logger=self._logger)
+                self._logger.info(f"Batch script created: {script_created}")
                 result = subprocess.run(
                     ["sbatch", batch_name], capture_output=True, text=True
                 )
                 if result.returncode == 0:
-                    self.log_or_print("Batch job submitted using 'sbatch'.", logger=self._logger)
+                    self._logger.info("Batch job submitted using 'sbatch'.")
                     try:
                         job_number = int(result.stdout.strip().split()[-1])
                         self.slurm_obj.running_jobs.append(job_number)
-                        self.log_or_print(f"Job number {job_number} added to running jobs.", logger=self._logger)
+                        self._logger.info(f"Job number {job_number} added to running jobs.")
                     except (ValueError, IndexError) as e:
-                        self.log_or_print(f"Failed to parse job number: {e}", logger=self._logger, level=logging.ERROR)
+                        self._logger.info(f"Failed to parse job number: {e}")
                 else:
-                    self.log_or_print(f"Failed to submit batch job: {result.stderr}", logger=self._logger, level=logging.ERROR)
+                    self._logger.error(f"Failed to submit batch job: {result.stderr}")
             finally:
                 if delete_batch_script:
                     batch_script_path = f"{batch_name}.sh"
                     if os.path.exists(batch_script_path):
                         os.remove(batch_script_path)
-                        self.log_or_print(f"Batch script '{batch_script_path}' has been removed.", logger=self._logger)
+                        self._logger.info(f"Batch script '{batch_script_path}' has been removed.")
         else:
             # If no SlurmFile object was provided, execute directly.
             command: str = f"{host_spec} abinit < {input_file} > {log}"
             os.system(command)
-            self.log_or_print(f"Abinit executed directly. Output written to '{log}'.", logger=self._logger)
+            self._logger.info(f"Abinit executed directly. Output written to '{log}'.")
 
     def run_piezo_calculation(self, host_spec: str = "mpirun -hosts=localhost -np 30") -> None:
         """
@@ -401,122 +394,92 @@ kptopt2 2
         command = f"anaddb < {files_path} > {log_path}"
         try:
             subprocess.run(command, shell=True, check=True)
-            self.log_or_print(f"Command executed successfully: {command}", logger=self._logger)
+            self._logger.info(f"Command executed successfully: {command}")
         except subprocess.CalledProcessError as e:
-            self.log_or_print(f"An error occurred while executing the command: {e}", logger=self._logger, level=logging.ERROR)
+            self._logger.error(f"An error occurred while executing the command: {e}")
 
         return output_file
-
-
-    def run_mrgddb_file(self, content: str) -> None:
-        """
-        Executes the mrgddb command using a provided input file content.
-        """
-        with open(f"{self.file_name}_mrgddb.in", "w") as outf:
-            outf.write(content)
-        command: str = f"mrgddb < {self.file_name}_mrgddb.in"
-        try:
-            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self.log_or_print(f"Command executed successfully: {command}", logger=self._logger)
-            self.log_or_print(f"Output: {result.stdout.decode()}", logger=self._logger)
-        except subprocess.CalledProcessError as e:
-            self.log_or_print(f"An error occurred while executing the command: {e}", logger=self._logger, level=logging.ERROR)
-            self.log_or_print(f"Error output: {e.stderr.decode()}", logger=self._logger, level=logging.ERROR)
-
-    def grab_energy(self, abo_file: str) -> None:
-        """
-        Retrieves the total energy from a specified Abinit output file.
-        """
-        if abo_file is None:
-            raise Exception("Please specify the abo file you are attempting to access")
-        total_energy_value: Optional[str] = None
-        try:
-            with open(abo_file) as f:
-                abo_content: str = f.read()
-            match = re.search(r"total_energy\s*:\s*(-?\d+\.\d+E?[+-]?\d*)", abo_content)
-            if match:
-                total_energy_value = match.group(1)
-                self.energy: float = float(total_energy_value)
-            else:
-                self.log_or_print("Total energy not found.", logger=self._logger, level=logging.WARNING)
-        except FileNotFoundError:
-            self.log_or_print(f"The file {abo_file} was not found.", logger=self._logger, level=logging.ERROR)
-
-    def grab_flexo_tensor(self, anaddb_file: Optional[str] = None) -> None:
-        """
-        Retrieves the TOTAL flexoelectric tensor from the specified file.
-        """
-        if anaddb_file is None:
-            anaddb_file = "file_name_energy.abo"
-        flexo_tensor: Optional[np.ndarray] = None
-        try:
-            with open(anaddb_file) as f:
-                abo_content: str = f.read()
-            flexo_match = re.search(
-                r"TOTAL flexoelectric tensor \(units= nC/m\)\s*\n\s+xx\s+yy\s+zz\s+yz\s+xz\s+xy\n((?:.*\n){9})",
-                abo_content,
-            )
-            if flexo_match:
-                tensor_strings = flexo_match.group(1).strip().split("\n")
-                flexo_tensor = np.array([list(map(float, line.split()[1:])) for line in tensor_strings])
-        except FileNotFoundError:
-            self.log_or_print(f"The file {anaddb_file} was not found.", logger=self._logger, level=logging.ERROR)
-        self.flexo_tensor = flexo_tensor
-
-    def parse_tensor(self, tensor_str: str) -> np.ndarray:
-        """
-        Parses a tensor string into a NumPy array.
-        """
-        lines = tensor_str.strip().splitlines()
-        tensor_data = []
-        for line in lines:
-            elements = line.split()
-            if all(part.lstrip('-').replace('.', '', 1).isdigit() for part in elements):
-                try:
-                    numbers = [float(value) for value in elements]
-                    tensor_data.append(numbers)
-                except ValueError as e:
-                    self.log_or_print(f"Could not convert line to numbers: {line}, Error: {e}", logger=self._logger, level=logging.ERROR)
-                    raise
-        return np.array(tensor_data)
-
-    def grab_piezo_tensor(self, anaddb_file: Optional[str] = None) -> None:
-        """
-        Retrieves the clamped and relaxed ion piezoelectric tensors.
-        """
-        if anaddb_file is None:
-            anaddb_file = f"{self.file_name}_energy.abo"
-        piezo_tensor_clamped: Optional[np.ndarray] = None
-        piezo_tensor_relaxed: Optional[np.ndarray] = None
-        try:
-            with open(anaddb_file) as f:
-                abo_content: str = f.read()
-            clamped_match = re.search(
-                r"Proper piezoelectric constants \(clamped ion\) \(unit:c/m\^2\)\s*\n((?:\s*-?\d+\.\d+\s+\n?)+)",
-                abo_content,
-            )
-            if clamped_match:
-                clamped_strings = clamped_match.group(1).strip().split("\n")
-                piezo_tensor_clamped = np.array([list(map(float, line.split())) for line in clamped_strings])
-            relaxed_match = re.search(
-                r"Proper piezoelectric constants \(relaxed ion\) \(unit:c/m\^2\)\s*\n((?:\s*-?\d+\.\d+\s+\n?)+)",
-                abo_content,
-            )
-            if relaxed_match:
-                relaxed_strings = relaxed_match.group(1).strip().split("\n")
-                piezo_tensor_relaxed = np.array([list(map(float, line.split())) for line in relaxed_strings])
-        except FileNotFoundError:
-            self.log_or_print(f"The file {anaddb_file} was not found.", logger=self._logger, level=logging.ERROR)
-        self.piezo_tensor_clamped = piezo_tensor_clamped
-        self.piezo_tensor_relaxed = piezo_tensor_relaxed
-
-    def clean_files(self, filename: str = "filename.abi") -> None:
-        pass
-
+    
     def copy_abinit_file(self):
         """
         Creates a deep copy of the current AbinitFile instance.
+
+        Returns:
+            AbinitFile: A new instance that is a deep copy of self.
         """
-        copied_file = copy.deepcopy(self)
-        return copied_file
+        return copy.deepcopy(self)
+
+
+    def __repr__(self):
+
+        lines = []
+        lines.append("#--------------------------")
+        lines.append("# Definition of unit cell")
+        lines.append("#--------------------------")
+        acell = self.vars.get("acell", self.structure.lattice.abc)
+        lines.append(f"acell {' '.join(map(str, acell))}")
+        rprim = self.vars.get("rprim", self.structure.lattice.matrix.tolist())
+        lines.append("rprim")
+        for coord in rprim:
+            lines.append(f"  {'  '.join(map(str, coord))}")
+        # Choose coordinate system: xcart if available; otherwise xred.
+        if self.vars.get("xcart") is not None:
+            lines.append("xcart")
+            coordinates = self.vars['xcart']
+            for coord in coordinates:
+                lines.append(f"  {'  '.join(map(str, coord))}")
+        else:
+            lines.append("xred")
+            coordinates = self.vars.get("xred", [])
+            for coord in coordinates:
+                lines.append(f"  {'  '.join(map(str, coord))}")
+        lines.append("")
+        lines.append("#--------------------------")
+        lines.append("# Definition of atoms")
+        lines.append("#--------------------------")
+        lines.append(f"natom {self.vars.get('natom')}")
+        lines.append(f"ntypat {self.vars.get('ntypat')}")
+        lines.append(f"znucl {' '.join(map(str, self.vars.get('znucl', [])))}")
+        lines.append(f"typat {' '.join(map(str, self.vars.get('typat', [])))}")
+        lines.append("")
+        lines.append("#----------------------------------------")
+        lines.append("# Definition of the planewave basis set")
+        lines.append("#----------------------------------------")
+        lines.append(f"ecut {self.vars.get('ecut', 42)}")
+        if self.vars.get("ecutsm") is not None:
+            lines.append(f"ecutsm {self.vars.get('ecutsm')}")
+        lines.append("")
+        lines.append("#--------------------------")
+        lines.append("# Definition of the k-point grid")
+        lines.append("#--------------------------")
+        lines.append(f"nshiftk {self.vars.get('nshiftk', '1')}")
+        lines.append("kptrlatt")
+        if self.vars.get("kptrlatt") is not None:
+            for row in self.vars.get("kptrlatt"):
+                lines.append(f"  {' '.join(map(str, row))}")
+        # Make sure to split shiftk if it's a string
+        shiftk = self.vars.get("shiftk", "0.5 0.5 0.5")
+        if isinstance(shiftk, str):
+            shiftk = shiftk.split()
+        lines.append(f"shiftk {' '.join(map(str, shiftk))}")
+        lines.append(f"nband {self.vars.get('nband')}")
+        lines.append("")
+        lines.append("#--------------------------")
+        lines.append("# Definition of the SCF Procedure")
+        lines.append("#--------------------------")
+        lines.append(f"nstep {self.vars.get('nstep', 9)}")
+        lines.append(f"diemac {self.vars.get('diemac', '1000000.0')}")
+        lines.append(f"ixc {self.vars.get('ixc')}")
+        conv_criteria = self.vars.get("conv_criteria")
+        if conv_criteria is not None:
+            conv_value = self.vars.get(conv_criteria)
+            lines.append(f"{conv_criteria} {str(conv_value)}")
+        pp_dir_path = PseudopotentialManager().folder_path
+        lines.append(f'pp_dirpath "{pp_dir_path}"')
+        pseudos = self.vars.get("pseudos", [])
+        # Remove any embedded double quotes from each pseudo and then join them.
+        concatenated_pseudos = " ".join(pseudo.replace('"', '') for pseudo in pseudos)
+        lines.append(f'pseudos "{concatenated_pseudos}"')
+        return "\n".join(lines)
+
 

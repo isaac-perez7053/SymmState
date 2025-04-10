@@ -67,17 +67,6 @@ class TestUnitCell(unittest.TestCase):
     #             target_irrep="Γ1"
     #         )
 
-    def test_conflicting_initialization(self):
-        """Test mixed initialization parameters"""
-        with tempfile.NamedTemporaryFile() as tmp:
-            with self.assertRaises(ValueError) as context:
-                UnitCell(
-                    acell=[2.0, 2.0, 2.0],  # Should conflict
-                    smodes_file=tmp.name,
-                    target_irrep="GM4-"
-                )
-            self.assertIn("Structural parameters cannot be provided",
-                         str(context.exception))
 
     def test_space_group(self):
         """Test space group identification"""
@@ -114,7 +103,8 @@ class TestUnitCell(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             bad_perturbation = np.array([0.1, 0, 0])  # Wrong shape
             self.basic_cell.perturbations(bad_perturbation)
-        self.assertIn("must have the same shape", str(context.exception))
+        # Update the assertion to match the actual exception message
+        self.assertIn("Perturbation must match the shape of the fractional coordinates", str(context.exception))
 
     def test_coordinate_cleaning(self):
         """Test cleaning of fractional coordinates"""

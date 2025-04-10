@@ -6,6 +6,7 @@ import numpy as np
 import re
 from symmstate.abinit.abinit_file import AbinitFile
 from pymatgen.core import Structure, Lattice, Element
+from symmstate.utils import DataParser
 
 # --- Helper class to simulate a callable and subscriptable get ---
 class CallableGet:
@@ -115,10 +116,8 @@ class TestAbinitFile(unittest.TestCase):
         energy_value = -123.456E+00
         with open(abo_file, "w") as f:
             f.write(f"some text\n total_energy: {energy_value}\n more text")
-        self.abinit_file.grab_energy(abo_file)
-        # Verify that the energy attribute is set correctly.
-        self.assertTrue(hasattr(self.abinit_file, "energy"))
-        np.testing.assert_almost_equal(self.abinit_file.energy, energy_value)
+        energy = DataParser.grab_energy(abo_file)
+        np.testing.assert_almost_equal(energy, energy_value)
 
     def test_parse_tensor(self):
         tensor_str = """
@@ -126,7 +125,7 @@ class TestAbinitFile(unittest.TestCase):
         4.0 5.0 6.0
         7.0 8.0 9.0
         """
-        parsed = self.abinit_file.parse_tensor(tensor_str)
+        parsed = DataParser.parse_tensor(tensor_str, logger=None)
         expected = np.array([[1.0, 2.0, 3.0],
                              [4.0, 5.0, 6.0],
                              [7.0, 8.0, 9.0]])
@@ -155,9 +154,9 @@ class TestAbinitFile(unittest.TestCase):
 """
         with open(anaddb_file, "w") as f:
             f.write("Some header\n" + tensor_section + "\nSome footer")
-        self.abinit_file.grab_flexo_tensor(anaddb_file)
-        self.assertIsNotNone(self.abinit_file.flexo_tensor)
-        self.assertEqual(self.abinit_file.flexo_tensor.shape, (9, 5))
+        flexotensor = DataParser.grab_flexo_tensor(anaddb_file, logger=None)
+        self.assertIsNotNone(flexotensor)
+        self.assertEqual(flexotensor.shape, (9, 5))
 
     def test_grab_piezo_tensor(self):
         anaddb_file = os.path.join(self.test_dir, "dummy_piezo.abo")
@@ -172,11 +171,11 @@ class TestAbinitFile(unittest.TestCase):
         content = clamped_section + "\n" + relaxed_section
         with open(anaddb_file, "w") as f:
             f.write(content)
-        self.abinit_file.grab_piezo_tensor(anaddb_file)
+        clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(anaddb_file, logger=None)
         expected_clamped = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
         expected_relaxed = np.array([[0.7, 0.8, 0.9], [1.0, 1.1, 1.2]])
-        np.testing.assert_array_almost_equal(self.abinit_file.piezo_tensor_clamped, expected_clamped)
-        np.testing.assert_array_almost_equal(self.abinit_file.piezo_tensor_relaxed, expected_relaxed)
+        np.testing.assert_array_almost_equal(clamped_tensor, expected_clamped)
+        np.testing.assert_array_almost_equal(relaxed_tensor, expected_relaxed)
 
 if __name__ == '__main__':
     unittest.main()

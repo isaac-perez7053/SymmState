@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from symmstate.utils import DataParser
 
 from symmstate.flpz.perturbations import Perturbations
 from symmstate.slurm_file import SlurmFile
@@ -127,13 +128,13 @@ class TestNewPerturbations(unittest.TestCase):
         self.pert_obj.generate_perturbations()
         for obj in self.pert_obj.perturbed_objects:
             obj.run_energy_calculation(host_spec=self.dummy_slurm)
-            obj.grab_energy = lambda abo: None
+            DataParser.grab_energy = lambda abo, logger=None: 136
         # Ensure dummy_slurm.running_jobs is non-empty.
         self.dummy_slurm.running_jobs = [888]
         self.pert_obj.calculate_energy_of_perturbations()
         self.assertEqual(len(self.pert_obj.results["energies"]), self.num_datapoints)
         for energy in self.pert_obj.results["energies"]:
-            self.assertEqual(energy, 100)
+            self.assertEqual(energy, 136)
 
     def test_calculate_piezo_of_perturbations(self):
         self.pert_obj.generate_perturbations()
@@ -141,15 +142,15 @@ class TestNewPerturbations(unittest.TestCase):
             obj.run_piezo_calculation(host_spec=self.dummy_slurm)
             obj.run_mrgddb_file = lambda content: None
             obj.run_anaddb_file = lambda inp, piezo=False, flexo=False, peizo=False: "dummy_piezo_output"
-            obj.grab_energy = lambda abo: None
-            obj.grab_piezo_tensor = lambda anaddb_file=None: None
+            DataParser.grab_energy = lambda abo, logger=None: 152
+            DataParser.grab_piezo_tensor = lambda anaddb_file=None, logger=None: ("dummy_clamped_tensor", "dummy_relaxed_tensor")
             # Set each DummyPerturbation's slurm_obj.running_jobs to a dummy value.
             obj.slurm_obj.running_jobs = [888]
         self.dummy_slurm.running_jobs = [888]
         self.pert_obj.calculate_piezo_of_perturbations()
         self.assertEqual(len(self.pert_obj.results["energies"]), self.num_datapoints)
         for energy in self.pert_obj.results["energies"]:
-            self.assertEqual(energy, 110)
+            self.assertEqual(energy, 152)
         self.assertEqual(len(self.pert_obj.results["piezo"]["clamped"]), self.num_datapoints)
         self.assertEqual(len(self.pert_obj.results["piezo"]["relaxed"]), self.num_datapoints)
 
@@ -159,15 +160,15 @@ class TestNewPerturbations(unittest.TestCase):
             obj.run_flexo_calculation(host_spec=self.dummy_slurm)
             obj.run_mrgddb_file = lambda content: None
             obj.run_anaddb_file = lambda inp, piezo=False, flexo=False, peizo=False: "dummy_output"
-            obj.grab_energy = lambda abo: None
-            obj.grab_flexo_tensor = lambda anaddb_file=None: None
-            obj.grab_piezo_tensor = lambda anaddb_file=None: None
+            DataParser.grab_energy = lambda abo, logger=None: 170
+            DataParser.grab_flexo_tensor = lambda anaddb_file=None, logger=None: None
+            DataParser.grab_piezo_tensor = lambda anaddb_file=None, logger=None: ("dummy_clamped_tensor", "dummy_relaxed_tensor")
             obj.slurm_obj.running_jobs = [777]
         self.dummy_slurm.running_jobs = [777]
         self.pert_obj.calculate_flexo_of_perturbations()
         self.assertEqual(len(self.pert_obj.results["energies"]), self.num_datapoints)
         for energy in self.pert_obj.results["energies"]:
-            self.assertEqual(energy, 120)
+            self.assertEqual(energy, 170)
         self.assertEqual(len(self.pert_obj.results["flexo"]), self.num_datapoints)
 
     def test_record_data(self):

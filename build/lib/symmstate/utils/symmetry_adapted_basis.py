@@ -2,9 +2,8 @@ import numpy as np
 from pathlib import Path
 import subprocess
 import os
-from symmstate import SymmStateCore
 from pymatgen.core import Structure, Lattice, Element
-from symmstate.config.settings import Settings
+from symmstate.config.symm_state_settings import settings
 import warnings
 
 class SymmAdaptedBasis:
@@ -13,7 +12,7 @@ class SymmAdaptedBasis:
 
     @staticmethod
     def symmatry_adapted_basis(
-        smodes_file, target_irrep
+        smodes_file, target_irrep, symm_prec=1.0e-5,
     ):
         """
         Extract header information from SMODES input file and store it in class attributes.
@@ -44,7 +43,7 @@ class SymmAdaptedBasis:
         acell = [1, 1, 1]
 
         # Execute SMODES and process output
-        command = f"{Settings.SMODES_PATH} < {smodes_file}"
+        command = f"{str(settings.SMODES_PATH)} < {smodes_file}"
         proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
         proc.wait()
         output = proc.stdout.read().decode("ascii")
@@ -105,19 +104,28 @@ class SymmAdaptedBasis:
         atom_names = []
         atom_positions_raw = []
 
+        # Loop through the target output starting from line 8.
         for l in range(8, len(target_output)):
-            line_content = target_output[l].split()
-            if target_output[l] == "Symmetry modes:":
+            line = target_output[l].strip()
+            # Use a more robust termination condition.
+            if "Symmetry modes:" in line:
                 break
-            if len(line_content) >= 4:
-                atom_names.append(line_content[1])
-                atom_positions_raw.append(
-                    [
-                        float(line_content[2]),
-                        float(line_content[3]),
-                        float(line_content[4]),
-                    ]
-                )
+            tokens = line.split()
+            # Expect exactly 5 tokens: [index, atom name, x, y, z]
+            if len(tokens) < 5:
+                continue  # skip lines that do not have enough tokens
+            atom_names.append(tokens[1])
+            try:
+                pos = [float(tokens[2]), float(tokens[3]), float(tokens[4])]
+            except ValueError:
+                continue  # skip lines where coordinate conversion fails
+            atom_positions_raw.append(pos)
+
+        # Check that the two lists have equal length; otherwise raise an error.
+        if len(atom_names) != len(atom_positions_raw):
+            raise ValueError(
+                f"Parsing error: {len(atom_names)} atom names but {len(atom_positions_raw)} positions were extracted. Check your SMODES file format."
+            )
 
         # Number of atoms
         num_atoms = len(atom_names)
@@ -150,7 +158,7 @@ class SymmAdaptedBasis:
         typat = result
 
         clean_list = SymmAdaptedBasis._generate_clean_list()
-        shape_cell = SymmAdaptedBasis._clean_matrix(shape_cell, clean_list)
+        shape_cell = SymmAdaptedBasis._clean_matrix(shape_cell, clean_list, symm_prec=symm_prec)
 
         prec_lat_array = np.array([prec_lat_param, prec_lat_param, prec_lat_param])
 
@@ -158,7 +166,7 @@ class SymmAdaptedBasis:
         rprim = np.multiply(shape_cell, prec_lat_array)
 
         atom_positions = SymmAdaptedBasis._clean_positions(
-            atom_positions_raw, prec_lat_param, clean_list
+            atom_positions_raw, prec_lat_param, clean_list, symm_prec=symm_prec
         )
         print(f"Smodes Unit Cell Coordinates:\n {atom_positions} \n")
         coordinates = atom_positions

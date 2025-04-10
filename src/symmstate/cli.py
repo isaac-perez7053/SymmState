@@ -2,9 +2,8 @@ import os
 import subprocess
 from pathlib import Path
 import click
-from symmstate.config.settings import Settings
+from symmstate.config.symm_state_settings import settings
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
-from symmstate.templates.template_manager import TemplateManager
 from symmstate.slurm_file import SlurmFile
 from symmstate.flpz.energy.energy_program import EnergyProgram
 from symmstate.flpz.electrotensor.electro_tensor_program import ElectroTensorProgram
@@ -15,16 +14,17 @@ from symmstate.flpz.data_analysis import (
     plot_flexo_grid,
     plot_varying_components,
 )
+from symmstate.abinit.abinit_file import AbinitFile
 import click
 import subprocess
+from symmstate.utils import DataParser
 
 # Define the run_smodes function directly in this file to avoid circular imports.
 def run_smodes(smodes_input):
     # Local import to avoid circular dependencies.
-    from symmstate.config.settings import Settings
-    if not Path(Settings().SMODES_PATH).is_file():
-        raise FileNotFoundError(f"SMODES executable not found at: {Settings().SMODES_PATH}")
-    command = f"{Settings().SMODES_PATH} < {smodes_input} "
+    if not Path(settings.SMODES_PATH).is_file():
+        raise FileNotFoundError(f"SMODES executable not found at: {settings.SMODES_PATH}")
+    command = f"{settings.SMODES_PATH} < {smodes_input} "
     process = subprocess.run(command, shell=True, capture_output=True, text=True)
     if process.returncode != 0:
         raise RuntimeError(f"SMODES execution failed: {process.stderr}")
@@ -78,7 +78,6 @@ def pseudos(add, delete, list_pseudos):
 @click.option('--smodes-path', type=click.Path(), help="Set the path to the SMODES executable file")
 def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_nodes, slurm_ntasks, slurm_mem, environment, test_dir, smodes_path):
     """Manage global settings of the package"""
-    from symmstate.config.settings import settings  # Import the global instance
     updated = False
     if pp_dir:
         settings.PP_DIR = Path(pp_dir)
@@ -136,7 +135,7 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
 @cli.command(name="show-config")
 def show_config():
     """Display current global settings."""
-    settings_instance = Settings()
+    settings_instance = settings
     click.echo("Current Global Settings:")
     click.echo(f"SMODES_PATH:  {settings_instance.SMODES_PATH}")
     click.echo(f"PP_DIR: {settings_instance.PP_DIR}")
@@ -203,7 +202,7 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
     click.echo(f"Unstable threshold: {unstable_threshold}")
 
     # Create a SlurmFile object using the SLURM header from Settings.
-    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in Settings().SLURM_HEADER.items())
+    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items())
     slurm_obj = SlurmFile(sbatch_header_source=slurm_header, num_processors=1)
     
     energy_prog = EnergyProgram(
@@ -215,7 +214,7 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
         smodes_input=smodes_input,
         target_irrep=target_irrep,
         slurm_obj=slurm_obj,
-        symm_prec=Settings().SYMM_PREC,
+        symm_prec=settings.SYMM_PREC,
         disp_mag=disp_mag,
         unstable_threshold=unstable_threshold,
     )
@@ -255,7 +254,7 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
     click.echo(f"Unstable threshold: {unstable_threshold}")
     click.echo(f"Piezo calculation: {piezo}")
 
-    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in Settings().SLURM_HEADER.items())
+    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items())
     slurm_obj = SlurmFile(sbatch_header_source=slurm_header, num_processors=1)
     
     et_prog = ElectroTensorProgram(
@@ -267,7 +266,7 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
         smodes_input=smodes_input,
         target_irrep=target_irrep,
         slurm_obj=slurm_obj,
-        symm_prec=Settings().SYMM_PREC,
+        symm_prec=settings.SYMM_PREC,
         disp_mag=disp_mag,
         unstable_threshold=unstable_threshold,
         piezo_calculation=piezo
@@ -275,21 +274,38 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
     et_prog.run_program()
 
 @cli.command()
-@click.option("--smodes-input", type=click.Path(exists=True), required=True,
+@click.option("--run", type=click.Path(exists=True), required=False,
               help="Path to the SMODES input file")
-def smodes(smodes_input):
+@click.option("--sym_basis", is_flag=True, required=False,
+              help="Generate the symmetry adapted basis for an Abinit File")
+@click.argument("abi_file", type=click.Path(exists=True), required=False)
+@click.argument("smodes_input", type=click.Path(exists=True), required=False)
+@click.argument("irrep", type=str, required=False)
+def smodes(run, sym_basis, abi_file, smodes_input, irrep):
     """
-    Run SMODES using the provided SMODES input file.
+    Run SMODES using the provided SMODES input file or generate the symmetry adapted basis.
     
     This command uses the global SMODES path from Settings.
     """
-    click.echo("Running SMODES...")
-    try:
-        result = run_smodes(smodes_input)
-        click.echo("SMODES output:")
-        click.echo(result)
-    except Exception as e:
-        click.echo(f"Error running SMODES: {e}")
+    if run:
+        click.echo("Running SMODES...")
+        try:
+            result = run_smodes(run)
+            click.echo("SMODES output:")
+            click.echo(result)
+        except Exception as e:
+            click.echo(f"Error running SMODES: {e}")
+
+    if sym_basis:
+        if not abi_file or not smodes_input or not irrep:
+            click.echo("Error: Missing required arguments for --symm_adapted_basis.")
+            click.echo("You must specify 'abi_file', 'smodes_input', and 'irrep'.")
+            return
+        
+        click.echo(f"Generating symmetry adapted basis for '{abi_file}' with '{smodes_input}' and irrep '{irrep}'.")
+        abi_file = AbinitFile(abi_file=abi_file, smodes_input=smodes_input, target_irrep=irrep)
+        click.echo(abi_file)
+
 
 @cli.group()
 def test():
@@ -299,67 +315,67 @@ def test():
 @test.command()
 def abinit_file():
     """Run tests for test_abinit_file.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_abinit_file.py"
+    test_path = settings.TEST_DIR / "unit" / "test_abinit_file.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def abinit_unit_cell():
     """Run tests for test_abinit_unit_cell.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_abinit_unit_cell.py"
+    test_path = settings.TEST_DIR / "unit" / "test_abinit_unit_cell.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def electrotensor():
     """Run tests for test_electro_tensor.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_electro_tensor.py"
+    test_path = settings.TEST_DIR / "unit" / "test_electro_tensor.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def energy_program():
     """Run tests for test_energy_program.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_energy_program.py"
+    test_path = settings.TEST_DIR / "unit" / "test_energy_program.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def perturbations():
     """Run tests for test_perturbations.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_perturbations.py"
+    test_path = settings.TEST_DIR / "unit" / "test_perturbations.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def pseudopotential():
     """Run tests for test_pseudopotential.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_pseudopotential.py"
+    test_path = settings.TEST_DIR / "unit" / "test_pseudopotential.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def slurm_jobs():
     """Run tests for test_slurm_jobs.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_slurm_jobs.py"
+    test_path = settings.TEST_DIR / "unit" / "test_slurm_jobs.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def smodes_calculator():
     """Run tests for test_smodes_calculator.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_smodes_calculator.py"
+    test_path = settings.TEST_DIR / "unit" / "test_smodes_calculator.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def template_manager():
     """Run tests for test_template_manager.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_template_manager.py"
+    test_path = settings.TEST_DIR / "unit" / "test_template_manager.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def unit_cell_module():
     """Run tests for test_unit_cell_module.py"""
-    test_path = Settings().TEST_DIR / "unit" / "test_unit_cell_module.py"
+    test_path = settings.TEST_DIR / "unit" / "test_unit_cell_module.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
 @test.command()
 def test_all():
     """Run all tests at once using pytest"""
-    test_path = Settings().TEST_DIR / "unit"
+    test_path = settings.TEST_DIR / "unit"
     if not test_path.exists():
         click.echo(f"Test directory not found: {test_path}")
         return
@@ -448,6 +464,39 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
             fig.show()
         else:
             ax.get_figure().show()
+
+@cli.command()
+@click.option("--flexotensor", type=click.Path(exists=True), required=False,
+            help="Grab the flexoelectric tensor of an Abinit file")
+@click.option("--piezotensor", type=click.Path(exists=True), required=False, 
+            help="Grab the piezoelectric tensor of an Abinit file")
+@click.option("--energy", type=click.Path(exists=True), required=False, 
+            help="Grab the energy from an Abinit file")
+def grab(flexotensor, piezotensor, energy):
+    """Grab various quantities from an Abinit file"""
+
+    if flexotensor:
+        tensor = DataParser.grab_flexo_tensor(flexotensor)
+        click.echo(
+            f"Flexoelectric tensor located in the file {flexotensor} is:\n"
+            f"{tensor}"
+        )
+    
+    if piezotensor:
+        tensor_clamped, tensor_relaxed = DataParser.grab_flexo_tensor(piezotensor)
+        click.echo(
+            f"Piezoelectric tensors located in the file {piezotensor} are:\n"
+            f"Clamped piezoelectric tensor:\n{tensor_clamped}\n"
+            f"Relaxed piezoelectric tensor:\n{tensor_relaxed}"
+        )
+        
+    if energy:
+        energy_value = DataParser.grab_energy(energy)
+        click.echo(
+            f"Energy located in the file {energy} is:\n"
+            f"{energy_value}"
+        )
+
 
 if __name__ == "__main__":
     cli()

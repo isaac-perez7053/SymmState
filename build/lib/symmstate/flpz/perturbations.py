@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 from symmstate.abinit import AbinitFile
 from symmstate.flpz import FlpzCore
+from symmstate.utils import DataParser
 
 class Perturbations(FlpzCore):
     """
@@ -118,8 +119,8 @@ class Perturbations(FlpzCore):
             obj.run_energy_calculation()  # Use slurm_obj from AbinitFile
             self.list_abi_files.append(f"{obj.file_name}.abi")
             # Append energy result.
-            obj.grab_energy(f"{obj.file_name}_energy.abo")
-            self.results["energies"].append(obj.energy)
+            energy = DataParser.grab_energy(f"{obj.file_name}_energy.abo", logger=self._logger)
+            self.results["energies"].append(energy)
         self.abinit_file.wait_for_jobs_to_finish(check_time=90)
 
     def calculate_piezo_of_perturbations(self):
@@ -159,11 +160,11 @@ class Perturbations(FlpzCore):
         self.results["piezo"]["clamped"] = []
         self.results["piezo"]["relaxed"] = []
         for i, obj in enumerate(self.perturbed_objects):
-            obj.grab_energy(f"{obj.file_name}_{i}_piezo.abo")
-            obj.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i])
-            self.results["energies"].append(obj.energy)
-            self.results["piezo"]["clamped"].append(obj.piezo_tensor_clamped)
-            self.results["piezo"]["relaxed"].append(obj.piezo_tensor_relaxed)
+            energy = DataParser.grab_energy(f"{obj.file_name}_{i}_piezo.abo", logger=self._logger)
+            clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i], logger=self._logger)
+            self.results["energies"].append(energy)
+            self.results["piezo"]["clamped"].append(clamped_tensor)
+            self.results["piezo"]["relaxed"].append(relaxed_tensor)
 
     def calculate_flexo_of_perturbations(self):
         """
@@ -205,13 +206,13 @@ class Perturbations(FlpzCore):
         self.abinit_file.slurm_obj.wait_for_jobs_to_finish(check_time=60, check_once=True)
         
         for i, obj in enumerate(self.perturbed_objects):
-            obj.grab_energy(f"{obj.file_name}_{i}_flexo.abo")
-            obj.grab_flexo_tensor(anaddb_file=anaddb_flexo_files[i])
-            obj.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i])
-            self.results["energies"].append(obj.energy)
-            self.results["flexo"].append(obj.flexo_tensor)
-            self.results["piezo"]["clamped"].append(obj.piezo_tensor_clamped)
-            self.results["piezo"]["relaxed"].append(obj.piezo_tensor_relaxed)
+            energy = DataParser.grab_energy(f"{obj.file_name}_{i}_flexo.abo", logger=self._logger)
+            flexotensor = DataParser.grab_flexo_tensor(anaddb_file=anaddb_flexo_files[i], logger=self._logger)
+            clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(anaddb_file=anaddb_piezo_files[i], logger=self._logger)
+            self.results["energies"].append(energy)
+            self.results["flexo"].append(flexotensor)
+            self.results["piezo"]["clamped"].append(clamped_tensor)
+            self.results["piezo"]["relaxed"].append(relaxed_tensor)
 
 
     def record_data(self, data_file):

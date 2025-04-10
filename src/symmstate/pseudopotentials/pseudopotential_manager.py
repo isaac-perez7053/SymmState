@@ -3,6 +3,7 @@ from typing import Dict
 import argparse
 import logging
 from symmstate import SymmStateCore
+from symmstate.utils import Logger
 
 class PseudopotentialManager(SymmStateCore): 
     def __init__(self, folder_path: str = None, *, logger=None):
@@ -34,14 +35,14 @@ class PseudopotentialManager(SymmStateCore):
 
         # Check if file already exists in dictionary
         if file_name in self.pseudo_registry:
-            self.log_or_print(message=f"File {file_name} already exists in the folder", logger=self.logger)
+            Logger.log_or_print(message=f"File {file_name} already exists in the folder", logger=self.logger)
 
         with open(file_path, 'rb') as f_src:
             with open(destination, 'wb') as f_dest:
                 f_dest.write(f_src.read())
 
         self.pseudo_registry[file_name] = destination
-        self.log_or_print(message=f'Added: {file_name}', logger=self.logger)
+        Logger.log_or_print(message=f'Added: {file_name}', logger=self.logger)
 
     def get_pseudopotential(self, name: str) -> str:
         """ Retrieve the path of the pseudopotential by name. """
@@ -52,9 +53,9 @@ class PseudopotentialManager(SymmStateCore):
         if name in self.pseudo_registry:
             os.remove(self.pseudo_registry[name])
             del self.pseudo_registry[name]
-            self.log_or_print(message=f'Deleted: {name}', logger=self.logger)
+            Logger.log_or_print(message=f'Deleted: {name}', logger=self.logger)
         else:
-            self.log_or_print(message=f"Pseudopotential {name} not found when attempting to delete", logger=self.logger, level=logging.ERROR)
+            Logger.log_or_print(message=f"Pseudopotential {name} not found when attempting to delete", logger=self.logger, level=logging.ERROR)
 
 def main():
     manager = PseudopotentialManager()
