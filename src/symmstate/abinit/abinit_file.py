@@ -167,7 +167,7 @@ class AbinitFile(AbinitUnitCell):
                 batch_name = os.path.basename(batch_name)
                 # Use the provided SlurmFile object.
                 script_created = self.slurm_obj.write_batch_script(
-                    input_file=input_file,
+                    input_file=f"{input_file}.abi",
                     log_file=log,
                     batch_name=batch_name,
                 )
