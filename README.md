@@ -14,22 +14,15 @@ SymmState is a Python package designed to calculate and analyze various symmetry
 
 To install the SymmState package, follow these steps:
 
-1. Clone the repository into a directory (name of directory is arbitrary):
+1. Install the package using pip:
     ```bash
-    mkdir symmstate_program
-    cd symmstate_program
-    ```
-
-2. Place the `SymmState` package files into the `symmstate_program` directory.
-
-3. Install the package using pip:
-    ```bash
-    pip install .
+    pip install symmstate
     ```
 
 This will install all necessary dependencies for SymmState and make it ready for use.
 
-4. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)
+2. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)
+3. Once downloaded, type 'symmstate' to configure the package to your needs! Look at tests/live for examples of how to use the package. 
 
 ## Features
 
