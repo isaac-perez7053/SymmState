@@ -8,26 +8,21 @@ Applications of symmetry in solid state physics
 
 ## Overview
 
-SymmState is a powerful Python package designed to calculate and analyze various symmetry applications within solid-state physics, such as flexoelectric and piezoelectric properties of materials. This package provides seamless interaction with Abinit, allowing users to conduct sophisticated simulations and analyses directly from Python. The package builds off of the many Pymatgen objects for extended functionality. 
+SymmState is a Python package designed to calculate and analyze various symmetry applications within solid-state physics, such as flexoelectric and piezoelectric properties of materials. This package provides seamless interaction with Abinit, allowing users to conduct sophisticated simulations and analyses directly through Python. The package builds off of  many Pymatgen objects for extended functionality. 
 
 ## Installation
 
 To install the SymmState package, follow these steps:
 
-1. Clone the repository into a directory (name of directory is arbitrary):
+1. Install the package using pip:
     ```bash
-    mkdir symmstate_program
-    cd symmstate_program
-    ```
-
-2. Place the `SymmState` package files into the `symmstate_program` directory.
-
-3. Install the package using pip:
-    ```bash
-    pip install .
+    pip install symmstate
     ```
 
 This will install all necessary dependencies for SymmState and make it ready for use.
+
+2. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)
+3. Once downloaded, type 'symmstate' to configure the package to your needs! Look at tests/live for examples of how to use the package. 
 
 ## Features
 
