@@ -182,7 +182,7 @@ class AbinitFile(AbinitUnitCell):
             concatenated_pseudos = ", ".join(pseudos).replace('"', "")
             outf.write(f'pseudos "{concatenated_pseudos}"\n')
             self._logger.info(
-                f"The Abinit file {output_file} was created successfully!"
+                f"The Abinit file {output_file}.abi was created successfully!"
             )
 
         return output_file
