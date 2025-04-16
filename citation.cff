@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the following metadata."
+title: "SymmState: A Solid-State Physics Package for Symmetry-Based Calculations"
+version: "0.9.0"
+authors:
+  - family-names: Perez
+    given-names: Isaac
+date-released: "2025"
+url: "https://github.com/isaac-perez7053/symmstate"
+license: "MIT"   # or "GPL-3.0" or whichever license you're using unmodified.

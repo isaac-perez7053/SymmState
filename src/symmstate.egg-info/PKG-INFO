@@ -5,9 +5,9 @@ Summary: Solid-state Physics Package for Symmetry Based Calculations!
 Home-page: https://github.com/isaac-perez7053
 Author: Isaac Perez
 Author-email: Isaac Perez <iperez@g.hmc.edu>
-Classifier: Development Status :: Testing
+Classifier: Development Status :: 4 - Beta
 Classifier: Programming Language :: Python :: 3
-Classifier: License ::
+Classifier: License :: OSI Approved :: MIT License
 Classifier: Intended Audience :: Science/Research
 Classifier: Topic :: Scientific/Engineering :: Chemistry
 Classifier: Topic :: Scientific/Engineering :: Physics
@@ -44,11 +44,16 @@ To install the SymmState package, follow these steps:
     ```bash
     pip install symmstate
     ```
+3. Download Abinit [here](https://abinit.github.io/abinit_web/) and follow their installation instructions
+4. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)
+5. Once downloaded, type 'symmstate' to configure the package to your needs! Look at tests/live for examples of how to use the package.
 
-This will install all necessary dependencies for SymmState and make it ready for use.
+## Testing
 
-2. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)
-3. Once downloaded, type 'symmstate' to configure the package to your needs! Look at tests/live for examples of how to use the package. 
+To find some basic tests, run:
+```bash
+symmstate test --help
+```
 
 ## Features
 

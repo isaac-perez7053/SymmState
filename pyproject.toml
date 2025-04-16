@@ -8,9 +8,9 @@ authors = [
   { name = "Isaac Perez", email = "iperez@g.hmc.edu" }
 ]
 classifiers = [
-    "Development Status :: Testing",
+    "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "License ::",
+    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Physics"
