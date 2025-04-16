@@ -27,9 +27,9 @@ This will install all necessary dependencies for SymmState and make it ready for
 ## Testing
 
 To find some basic tests, run:
-'''bash
+```bash
 symmstate test --help
-'''
+```
 
 ## Features
 
