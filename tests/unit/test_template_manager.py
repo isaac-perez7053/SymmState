@@ -5,13 +5,14 @@ import tempfile
 from pathlib import Path
 from symmstate.templates import TemplateManager
 
+
 class TestTemplateManager(unittest.TestCase):
     def setUp(self):
         # Create unique temporary directory for each test
         self.test_dir = tempfile.TemporaryDirectory()
         self.package_path = Path(self.test_dir.name) / "symmstate_pkg"
         self.package_path.mkdir()
-        
+
         # Create fresh templates directory
         self.templates_dir = self.package_path / "templates"
         self.templates_dir.mkdir(exist_ok=True)
@@ -19,10 +20,11 @@ class TestTemplateManager(unittest.TestCase):
         # Monkeypatch the path finding method
         self.original_find = TemplateManager.find_package_path
         TemplateManager.find_package_path = lambda *args: str(self.package_path)
-        
+
         # Create unique sample file for each test
         self.sample_abi = self.templates_dir / f"test_{uuid.uuid4().hex}.abi"
-        self.sample_abi.write_text("""acell 3*1.0
+        self.sample_abi.write_text(
+            """acell 3*1.0
 rprim
 1.0 0.0 0.0
 0.0 1.0 0.0
@@ -31,8 +33,9 @@ xred
 0.0 0.0 0.0
 0.5 0.5 0.5
 natom 2
-""")
-        
+"""
+        )
+
         # Create fresh manager instance
         self.manager = TemplateManager()
 
@@ -45,13 +48,12 @@ natom 2
     def test_create_new_template(self):
         template_name = f"new_template_{uuid.uuid4().hex}.abi"
         template_path = self.manager.create_template(
-            str(self.sample_abi),
-            template_name
+            str(self.sample_abi), template_name
         )
-        
+
         # Check registry
         self.assertIn(template_name, self.manager.template_registry)
-        
+
         # Verify content replacement
         content = Path(template_path).read_text()
         self.assertIn("rprim\n{rprim}", content)

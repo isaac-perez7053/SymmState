@@ -1,0 +1,146 @@
+Initialized SlurmFile with 12 processors
+2025-04-16 01:09:55,730 - symmstate - INFO - Name of abinit file: example1_file.abi
+2025-04-16 01:09:55,731 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,731 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_000 was created successfully!
+Wrote batch script to example1_file_bscript_000.sh
+2025-04-16 01:09:55,731 - symmstate - INFO - Batch script created: example1_file_bscript_000.sh
+sbatch output: Submitted batch job 1602
+Job submitted with ID 1602
+2025-04-16 01:09:55,741 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,742 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_001 was created successfully!
+Wrote batch script to example1_file_bscript_001.sh
+2025-04-16 01:09:55,742 - symmstate - INFO - Batch script created: example1_file_bscript_001.sh
+sbatch output: Submitted batch job 1603
+Job submitted with ID 1603
+2025-04-16 01:09:55,751 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,751 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_002 was created successfully!
+Wrote batch script to example1_file_bscript_002.sh
+2025-04-16 01:09:55,752 - symmstate - INFO - Batch script created: example1_file_bscript_002.sh
+sbatch output: Submitted batch job 1604
+Job submitted with ID 1604
+2025-04-16 01:09:55,760 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,760 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_003 was created successfully!
+Wrote batch script to example1_file_bscript_003.sh
+2025-04-16 01:09:55,760 - symmstate - INFO - Batch script created: example1_file_bscript_003.sh
+sbatch output: Submitted batch job 1605
+Job submitted with ID 1605
+2025-04-16 01:09:55,768 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,769 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_004 was created successfully!
+Wrote batch script to example1_file_bscript_004.sh
+2025-04-16 01:09:55,769 - symmstate - INFO - Batch script created: example1_file_bscript_004.sh
+sbatch output: Submitted batch job 1606
+Job submitted with ID 1606
+2025-04-16 01:09:55,777 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,777 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_005 was created successfully!
+Wrote batch script to example1_file_bscript_005.sh
+2025-04-16 01:09:55,777 - symmstate - INFO - Batch script created: example1_file_bscript_005.sh
+sbatch output: Submitted batch job 1607
+Job submitted with ID 1607
+2025-04-16 01:09:55,785 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,786 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_006 was created successfully!
+Wrote batch script to example1_file_bscript_006.sh
+2025-04-16 01:09:55,786 - symmstate - INFO - Batch script created: example1_file_bscript_006.sh
+sbatch output: Submitted batch job 1608
+Job submitted with ID 1608
+2025-04-16 01:09:55,794 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,794 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_007 was created successfully!
+Wrote batch script to example1_file_bscript_007.sh
+2025-04-16 01:09:55,794 - symmstate - INFO - Batch script created: example1_file_bscript_007.sh
+sbatch output: Submitted batch job 1609
+Job submitted with ID 1609
+2025-04-16 01:09:55,802 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,802 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_008 was created successfully!
+Wrote batch script to example1_file_bscript_008.sh
+2025-04-16 01:09:55,803 - symmstate - INFO - Batch script created: example1_file_bscript_008.sh
+sbatch output: Submitted batch job 1610
+Job submitted with ID 1610
+2025-04-16 01:09:55,811 - symmstate - INFO - Coordinates to be written: 
+ [[0.        0.        0.       ]
+ [3.6273467 3.6273467 3.6273467]
+ [0.        3.6273467 3.6273467]
+ [3.6273467 3.6273467 0.       ]
+ [3.6273467 0.        3.6273467]] 
+
+2025-04-16 01:09:55,811 - symmstate - INFO - The Abinit file /home/iperez/symmstate_testing/example1_file_energy_009 was created successfully!
+Wrote batch script to example1_file_bscript_009.sh
+2025-04-16 01:09:55,811 - symmstate - INFO - Batch script created: example1_file_bscript_009.sh
+sbatch output: Submitted batch job 1611
+Job submitted with ID 1611
+Monitoring 10 jobs...
+Jobs remaining: 10 - next check in 60s
+Jobs remaining: 10 - next check in 60s
+Jobs remaining: 8 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 7 - next check in 60s
+Jobs remaining: 6 - next check in 60s
+Jobs remaining: 6 - next check in 60s
+Jobs remaining: 6 - next check in 60s
+Jobs remaining: 6 - next check in 60s
+Jobs remaining: 6 - next check in 60s
+Jobs remaining: 6 - next check in 60s
+Jobs remaining: 5 - next check in 60s
+Jobs remaining: 5 - next check in 60s
+Jobs remaining: 3 - next check in 60s
+All jobs completed successfully!
+[-0.012796429721840303, -0.007456982081824465, -0.0038695081423304346, -0.0021708150498079932, -0.0011880513833955153, -0.0005789664136215626, -0.0002589795413092357, -0.00010751488788481052, -3.995164696239187e-05]

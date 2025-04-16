@@ -9,7 +9,7 @@ including error handling, file I/O operations, logging, and data parsing.
 from .exceptions import ParsingError, SymmStateError, JobSubmissionError
 from .file_io import safe_file_copy, get_unique_filename
 from .abinit_parser import AbinitParser
-from .logger import Logger  
+from .logger import Logger
 from .data_parser import DataParser
 from .misc import Misc
 from .documentation import Documentation
@@ -21,8 +21,8 @@ __all__ = [
     "safe_file_copy",
     "get_unique_filename",
     "AbinitParser",
-    "Logger", 
+    "Logger",
     "DataParser",
     "Misc",
-    "Documentation"
+    "Documentation",
 ]

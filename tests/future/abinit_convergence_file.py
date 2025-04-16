@@ -3,6 +3,7 @@ import numpy as np
 from fireworks import Firework, Workflow, LaunchPad
 from fireworks.user_objects.firetasks.script_task import ScriptTask
 
+
 class AbinitConvergenceFile(AbinitFile):
 
     def __init__(self, abi_file):
@@ -46,4 +47,5 @@ timopt  -3
 
         # Step 4: Submit Workflow to SLURM
         import os
+
         os.system("qlaunch rapidfire")

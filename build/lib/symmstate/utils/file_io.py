@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 from typing import Union
 
+
 def get_unique_filename(base_name: Union[str, Path], directory: str = ".") -> str:
     """Generate unique filename with incremental suffix if conflicts exist"""
     base_path = Path(directory) / base_name
@@ -16,6 +17,7 @@ def get_unique_filename(base_name: Union[str, Path], directory: str = ".") -> st
         if not candidate.exists():
             return str(candidate)
         counter += 1
+
 
 def safe_file_copy(src: Union[str, Path], dest_dir: Union[str, Path]) -> Path:
     """Copy file with conflict resolution"""

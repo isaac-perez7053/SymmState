@@ -1,21 +1,22 @@
 from pymatgen.core.periodic_table import Element
 from pymatgen.core import Structure, Lattice, Element
 
+
 class Misc:
     def __init__(self):
         pass
-    
+
     @staticmethod
     def calculate_nband(structure: Structure) -> None:
         """
-        Calculates and updates the number of bands (nband) in self.vars based on 
+        Calculates and updates the number of bands (nband) in self.vars based on
         the total number of valence electrons in the current structure.
-        
+
         The procedure is as follows:
-        1. For each atom in self.structure, sum up the valence electrons 
+        1. For each atom in self.structure, sum up the valence electrons
             using a predefined mapping.).
         3. Update self.vars["nband"] with the computed value.
-        
+
         Returns:
             int: The calculated number of bands.
         """
@@ -78,19 +79,19 @@ class Misc:
             "Cs": 1,
             "Ba": 2,
             "La": 3,
-            "Ce": 4,   # Depending on oxidation, Ce may be 3 or 4; here we choose 4.
+            "Ce": 4,  # Depending on oxidation, Ce may be 3 or 4; here we choose 4.
             "Pr": 4,
             "Nd": 4,
             "Pm": 4,
             "Sm": 4,
-            "Eu": 4,   # Eu is often considered divalent, but for valence we choose 4 as an approximation.
+            "Eu": 4,  # Eu is often considered divalent, but for valence we choose 4 as an approximation.
             "Gd": 4,
             "Tb": 4,
             "Dy": 4,
             "Ho": 4,
             "Er": 4,
             "Tm": 4,
-            "Yb": 2,   # Yb is often divalent.
+            "Yb": 2,  # Yb is often divalent.
             "Lu": 3,
             "Hf": 4,
             "Ta": 5,
@@ -149,8 +150,8 @@ class Misc:
                 total_valence += valence_map[symbol]
             else:
                 # Fallback: use half the atomic number (this is a crude estimate)
-                total_valence += specie.Z 
-                
+                total_valence += specie.Z
+
         nband = total_valence
         # Figure out why I have to add this 4
         return nband + 4

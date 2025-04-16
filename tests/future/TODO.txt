@@ -1,0 +1,11 @@
+1. Implement couplingn code
+
+2. TEST TEST TEST
+
+3. Update print or logger statements!
+
+4. Ensure variable names are consistent
+
+5. VASP integration at some entry_points
+
+6. Make Data Parsing more versatile

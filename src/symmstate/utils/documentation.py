@@ -1,11 +1,13 @@
 import textwrap
 
+
 class Documentation:
     def __init__(self):
         self.define_documentation()
 
     def define_documentation(self):
-        self.UNITCELL =  textwrap.dedent(r"""UnitCell Class
+        self.UNITCELL = textwrap.dedent(
+            r"""UnitCell Class
         ==============
         Defines the UnitCell class which contains all the necessary information for a unit cell used in solid state calculations.
 
@@ -101,10 +103,12 @@ class Documentation:
         Additional Information
         ----------------------
         The UnitCell class automatically cleans its numerical precision issues via the clean_reduced_coordinates() method, ensuring high consistency in further calculations.
-        """)
+        """
+        )
 
         # Extended documentation for the AbinitUnitCell class in Markdown.
-        self.ABINIT_UNIT_CELL_DOC = textwrap.dedent(r"""
+        self.ABINIT_UNIT_CELL_DOC = textwrap.dedent(
+            r"""
         AbinitUnitCell Class Documentation
         ==================================
 
@@ -187,8 +191,8 @@ class Documentation:
         cell = AbinitUnitCell(acell=acell, rprim=rprim, coordinates=coordinates,
                             coords_are_cartesian=False, elements=elements)
         print("Reduced Coordinates:", cell.grab_reduced_coordinates())
-        print("Space Group:", cell.find_space_group())""")
-
+        print("Space Group:", cell.find_space_group())"""
+        )
 
         self.ABINIT_UNIT_CELL_DOC = r"""
         AbinitUnitCell Class Documentation
@@ -370,7 +374,8 @@ class Documentation:
         """
 
         # Extended documentation for the SlurmFile class.
-        self.SLURM_FILE_DOC =  textwrap.dedent(r"""
+        self.SLURM_FILE_DOC = textwrap.dedent(
+            r"""
         SlurmFile Class Documentation
         ================================
 
@@ -422,5 +427,5 @@ class Documentation:
 
         This will print the above documentation and usage examples for the SlurmFile class.
 
-        """)
-
+        """
+        )

@@ -9,11 +9,11 @@ class FlpzCore(SymmStateCore):
 
     def __init__(
         self,
-        name="catio3",
-        num_datapoints="10",
-        abi_file="abifile.abi",
-        min_amp=0,
-        max_amp=0.5,
+        name: str = "catio3",
+        num_datapoints: int = "10",
+        abi_file: str = "abifile.abi",
+        min_amp: int = 0,
+        max_amp: int = 0.5,
     ):
         """
         Stores the attributes of the original input file
@@ -26,9 +26,8 @@ class FlpzCore(SymmStateCore):
         if not isinstance(num_datapoints, int) or num_datapoints <= 0:
             raise ValueError("num_datapoints should be a positive integer.")
 
-# I'm not sure why this keeps throwing an error even if an abi file exists.         
-        # if os.path.isfile(abi_file):
-        #     raise FileExistsError("An Abinit file was not detected!")
+        if not os.path.isfile(abi_file):
+            raise FileNotFoundError("An Abinit file was not detected!")
 
         self.name = str(name)
         self.num_datapoints = int(num_datapoints)

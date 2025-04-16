@@ -21,7 +21,7 @@ class UnitCell(SymmStateCore):
       - find_space_group(): Returns space group of the UnitCell
       - grab_reduced_coordinates(): Returns the reduced coordinates of the UnitCell
       - grab_cartesian_coordinates(): Returns the cartesian coordinates of the UnitCell
-    """  
+    """
 
     def __init__(
         self,
@@ -34,7 +34,7 @@ class UnitCell(SymmStateCore):
         *,
         smodes_file: Optional[str] = None,
         target_irrep: Optional[str] = None,
-        symm_prec: float = 1e-5
+        symm_prec: float = 1e-5,
     ):
         """
         Initialize the class through either:
@@ -62,12 +62,12 @@ class UnitCell(SymmStateCore):
                 "rprim": rprim,
                 "coordinates": coordinates,
                 "coords_are_cartesian": coords_are_cartesian,
-                "elements": elements
+                "elements": elements,
             }
             missing = [k for k, v in required_fields.items() if v is None]
             if missing:
                 raise ValueError(f"Missing parameters: {', '.join(missing)}")
-            
+
             # Build structure from manual parameters.
             acell = np.array(acell, dtype=float)
             rprim = np.array(rprim, dtype=float)
@@ -79,7 +79,7 @@ class UnitCell(SymmStateCore):
                 lattice=lattice,
                 species=elements,
                 coords=coordinates,
-                coords_are_cartesian=coords_are_cartesian
+                coords_are_cartesian=coords_are_cartesian,
             )
 
         # Always set coordinates
@@ -140,14 +140,14 @@ class UnitCell(SymmStateCore):
         # Convert value to Decimal for better precision
         d = Decimal(str(value))
         # Round to the nearest number with up to a reasonable precision
-        rounded_decimal = d.quantize(Decimal('1e-15'), rounding=ROUND_HALF_UP)
+        rounded_decimal = d.quantize(Decimal("1e-15"), rounding=ROUND_HALF_UP)
         # Convert the Decimal to a float
         return float(rounded_decimal)
 
     def clean_reduced_coordinates(self):
         # Copy the array to avoid modifying the original
         cleaned_arr = np.copy(self.structure.frac_coords)
-        
+
         # Function to round, and check tiny numbers
         def clean_value(x):
             # Round up if ending with .9999... to the nearest integer
@@ -159,7 +159,7 @@ class UnitCell(SymmStateCore):
             # Return the number itself if no conditions are met
             else:
                 return x
-        
+
         # Vectorize the cleaning function for the numpy array
         vectorized_clean_value = np.vectorize(clean_value)
 
@@ -173,6 +173,6 @@ class UnitCell(SymmStateCore):
             coords=cleaned_arr,
             coords_are_cartesian=False,
         )
-    
+
     def __repr__(self):
         return str(self.structure)

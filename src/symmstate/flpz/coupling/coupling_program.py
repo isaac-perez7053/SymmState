@@ -17,15 +17,21 @@ class EnergyProgram(FlpzCore):
         smodes_input=None,
         target_irrep=None,
         smodes_path="/home/iperez/isobyu/smodes",
-        host_spec='mpirun -hosts=localhost -np 30',
+        host_spec="mpirun -hosts=localhost -np 30",
         batch_script_header_file=None,
-        symm_prec='0.00001',
-        disp_mag='0.001',
+        symm_prec="0.00001",
+        disp_mag="0.001",
         flexo_calculation=False,
-        plot_piezo_relaxed=False
+        plot_piezo_relaxed=False,
     ):
         # Correctly initialize superclass
-        super().__init__(name=name, num_datapoints=num_datapoints, abi_file=abi_file, min_amp=min_amp, max_amp=max_amp)
+        super().__init__(
+            name=name,
+            num_datapoints=num_datapoints,
+            abi_file=abi_file,
+            min_amp=min_amp,
+            max_amp=max_amp,
+        )
 
         self.__smodes_processor = None
         self.__perturbations = []
@@ -76,7 +82,7 @@ class EnergyProgram(FlpzCore):
                     max_amp=self.max_amp,
                     perturbation=pert,
                     batch_script_header_file=self.batch_script_header_file,
-                    host_spec=self.host_spec
+                    host_spec=self.host_spec,
                 )
 
                 print(f"Perturbation object successfully initialized")
@@ -85,14 +91,16 @@ class EnergyProgram(FlpzCore):
                 if self.flexo_calculation:
                     perturbations.calculate_flexo_of_perturbations()
                     perturbations.data_analysis(save_plot=True, flexo=True)
-                else: 
+                else:
                     perturbations.calculate_piezo_of_perturbations()
-                    perturbations.data_analysis(save_plot=True, piezo=True, plot_piezo_relaxed_tensor=self.plot_piezo_relaxed)
+                    perturbations.data_analysis(
+                        save_plot=True,
+                        piezo=True,
+                        plot_piezo_relaxed_tensor=self.plot_piezo_relaxed,
+                    )
 
     def get_smodes_processor(self):
         return self.__smodes_processor
 
     def get_perturbations(self):
         return self.__perturbations
-
-

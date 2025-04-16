@@ -2,7 +2,6 @@ from typing import Optional
 import numpy as np
 import re
 import logging
-from symmstate.utils import Logger
 
 
 class DataParser:
@@ -26,10 +25,14 @@ class DataParser:
                 total_energy_value = match.group(1)
                 energy: float = float(total_energy_value)
             else:
-                Logger.log_or_print("Total energy not found.", logger=logger)
+                (logger.info if logger is not None else print)(
+                    "Total energy not found.", logger=logger
+                )
         except FileNotFoundError:
-            Logger.log_or_print(f"The file {abo_file} was not found.", logger=logger)
-        return energy 
+            (logger.info if logger is not None else print)(
+                f"The file {abo_file} was not found.", logger=logger
+            )
+        return energy
 
     @staticmethod
     def grab_flexo_tensor(anaddb_file: str, logger: logging = None) -> None:
@@ -46,9 +49,13 @@ class DataParser:
             )
             if flexo_match:
                 tensor_strings = flexo_match.group(1).strip().split("\n")
-                flexo_tensor = np.array([list(map(float, line.split()[1:])) for line in tensor_strings])
+                flexo_tensor = np.array(
+                    [list(map(float, line.split()[1:])) for line in tensor_strings]
+                )
         except FileNotFoundError:
-            Logger.log_or_print(f"The file {anaddb_file} was not found.", logger=logger)
+            (logger.info if logger is not None else print)(
+                f"The file {anaddb_file} was not found.", logger=logger
+            )
         return flexo_tensor
 
     @staticmethod
@@ -60,15 +67,17 @@ class DataParser:
         tensor_data = []
         for line in lines:
             elements = line.split()
-            if all(part.lstrip('-').replace('.', '', 1).isdigit() for part in elements):
+            if all(part.lstrip("-").replace(".", "", 1).isdigit() for part in elements):
                 try:
                     numbers = [float(value) for value in elements]
                     tensor_data.append(numbers)
                 except ValueError as e:
-                    Logger.log_or_print(f"Could not convert line to numbers: {line}, Error: {e}", logger=logger)
+                    (logger.info if logger is not None else print)(
+                        f"Could not convert line to numbers: {line}, Error: {e}",
+                        logger=logger,
+                    )
                     raise
         return np.array(tensor_data)
-
 
     @staticmethod
     def grab_piezo_tensor(anaddb_file: str, logger: logging = None) -> None:
@@ -86,14 +95,20 @@ class DataParser:
             )
             if clamped_match:
                 clamped_strings = clamped_match.group(1).strip().split("\n")
-                piezo_tensor_clamped = np.array([list(map(float, line.split())) for line in clamped_strings])
+                piezo_tensor_clamped = np.array(
+                    [list(map(float, line.split())) for line in clamped_strings]
+                )
             relaxed_match = re.search(
                 r"Proper piezoelectric constants \(relaxed ion\) \(unit:c/m\^2\)\s*\n((?:\s*-?\d+\.\d+\s+\n?)+)",
                 abo_content,
             )
             if relaxed_match:
                 relaxed_strings = relaxed_match.group(1).strip().split("\n")
-                piezo_tensor_relaxed = np.array([list(map(float, line.split())) for line in relaxed_strings])
+                piezo_tensor_relaxed = np.array(
+                    [list(map(float, line.split())) for line in relaxed_strings]
+                )
         except FileNotFoundError:
-            Logger.log_or_print(f"The file {anaddb_file} was not found.", logger=logger)
+            (logger.info if logger is not None else print)(
+                f"The file {anaddb_file} was not found.", logger=logger
+            )
         return piezo_tensor_clamped, piezo_tensor_relaxed

@@ -6,13 +6,16 @@ from pymatgen.core import Structure, Lattice, Element
 from symmstate.config.symm_state_settings import settings
 import warnings
 
+
 class SymmAdaptedBasis:
     def __init__(self):
         pass
 
     @staticmethod
     def symmatry_adapted_basis(
-        smodes_file, target_irrep, symm_prec=1.0e-5,
+        smodes_file,
+        target_irrep,
+        symm_prec=1.0e-5,
     ):
         """
         Extract header information from SMODES input file and store it in class attributes.
@@ -158,7 +161,9 @@ class SymmAdaptedBasis:
         typat = result
 
         clean_list = SymmAdaptedBasis._generate_clean_list()
-        shape_cell = SymmAdaptedBasis._clean_matrix(shape_cell, clean_list, symm_prec=symm_prec)
+        shape_cell = SymmAdaptedBasis._clean_matrix(
+            shape_cell, clean_list, symm_prec=symm_prec
+        )
 
         prec_lat_array = np.array([prec_lat_param, prec_lat_param, prec_lat_param])
 
@@ -200,7 +205,7 @@ class SymmAdaptedBasis:
         if crossdot_ispos == False:
             warnings.warn("Abinit requires this to be positive!")
 
-        # TODO: Do not assume that the coordinates will be reduced. 
+        # TODO: Do not assume that the coordinates will be reduced.
         coords_are_cartesian = True
 
         # Convert znucl to element symbols

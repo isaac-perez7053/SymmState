@@ -3,21 +3,24 @@ import shutil
 import tempfile
 import unittest
 import numpy as np
-import re
 from symmstate.abinit.abinit_file import AbinitFile
 from pymatgen.core import Structure, Lattice, Element
 from symmstate.utils import DataParser
+
 
 # --- Helper class to simulate a callable and subscriptable get ---
 class CallableGet:
     def __init__(self, d):
         self.d = d
+
     def __call__(self, key, default=None):
         # Use the built-in dict.get to avoid recursion
         return dict.get(self.d, key, default)
+
     def __getitem__(self, key_default):
         key, default = key_default
         return dict.get(self.d, key, default)
+
 
 # --- FakeVars that overrides get with a CallableGet ---
 class FakeVars(dict):
@@ -25,15 +28,18 @@ class FakeVars(dict):
         super().__init__(*args, **kwargs)
         self.get = CallableGet(self)
 
+
 # --- Dummy SlurmFile for testing ---
 class DummySlurmFile:
     def __init__(self):
         self.running_jobs = []
+
     def write_batch_script(self, input_file, log_file, batch_name):
         # Write a dummy batch script file.
         with open(batch_name, "w") as f:
             f.write("dummy script")
         return batch_name
+
 
 class TestAbinitFile(unittest.TestCase):
     def setUp(self):
@@ -70,7 +76,7 @@ class TestAbinitFile(unittest.TestCase):
         self.dummy_vars = FakeVars(data)
         # Create an AbinitFile instance using the dummy structure and a dummy SlurmFile.
         dummy_slurm = DummySlurmFile()
-        self.abinit_file = AbinitFile(unit_cell=self.dummy_structure, slurm_obj=dummy_slurm)
+        self.abinit_file = AbinitFile(unit_cell=self.dummy_structure)
         # Override self.vars with our fake dictionary.
         self.abinit_file.vars = self.dummy_vars
         # Set file_name to reside in the temporary directory.
@@ -100,7 +106,9 @@ class TestAbinitFile(unittest.TestCase):
         self.abinit_file.vars["xred"] = [[0, 0, 0]]
         self.abinit_file.vars["xcart"] = [[0, 0, 0]]
         # Call write_custom_abifile with coords_are_cartesian set to False.
-        self.abinit_file.write_custom_abifile(output_file, content, coords_are_cartesian=False)
+        self.abinit_file.write_custom_abifile(
+            output_file, content, coords_are_cartesian=False
+        )
         output_path = output_file + ".abi"
         self.assertTrue(os.path.exists(output_path))
         with open(output_path, "r") as f:
@@ -113,7 +121,7 @@ class TestAbinitFile(unittest.TestCase):
 
     def test_grab_energy(self):
         abo_file = os.path.join(self.test_dir, "dummy.abo")
-        energy_value = -123.456E+00
+        energy_value = -123.456e00
         with open(abo_file, "w") as f:
             f.write(f"some text\n total_energy: {energy_value}\n more text")
         energy = DataParser.grab_energy(abo_file)
@@ -126,9 +134,7 @@ class TestAbinitFile(unittest.TestCase):
         7.0 8.0 9.0
         """
         parsed = DataParser.parse_tensor(tensor_str, logger=None)
-        expected = np.array([[1.0, 2.0, 3.0],
-                             [4.0, 5.0, 6.0],
-                             [7.0, 8.0, 9.0]])
+        expected = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
         np.testing.assert_array_almost_equal(parsed, expected)
 
     def test_copy_abinit_file(self):
@@ -171,15 +177,14 @@ class TestAbinitFile(unittest.TestCase):
         content = clamped_section + "\n" + relaxed_section
         with open(anaddb_file, "w") as f:
             f.write(content)
-        clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(anaddb_file, logger=None)
+        clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(
+            anaddb_file, logger=None
+        )
         expected_clamped = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
         expected_relaxed = np.array([[0.7, 0.8, 0.9], [1.0, 1.1, 1.2]])
         np.testing.assert_array_almost_equal(clamped_tensor, expected_clamped)
         np.testing.assert_array_almost_equal(relaxed_tensor, expected_relaxed)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
-
-
-
-

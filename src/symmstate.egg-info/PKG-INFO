@@ -16,6 +16,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: pymatgen>=2023.7.20
 Requires-Dist: numpy>=1.21
 Requires-Dist: scipy>=1.7
+Requires-Dist: pyyaml>=6.0
 Requires-Dist: click>=8.0
 Requires-Dist: matplotlib>=3.5
 Provides-Extra: dev

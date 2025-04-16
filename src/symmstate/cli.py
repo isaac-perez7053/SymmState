@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 from symmstate.config.symm_state_settings import settings
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
-from symmstate.slurm_file import SlurmFile
+from symmstate.slurm import SlurmFile
 from symmstate.flpz.energy.energy_program import EnergyProgram
 from symmstate.flpz.electrotensor.electro_tensor_program import ElectroTensorProgram
 from symmstate.flpz.data_analysis import (
@@ -19,11 +19,14 @@ import click
 import subprocess
 from symmstate.utils import DataParser, Documentation
 
+
 # Define the run_smodes function directly in this file to avoid circular imports.
 def run_smodes(smodes_input):
     # Local import to avoid circular dependencies.
     if not Path(settings.SMODES_PATH).is_file():
-        raise FileNotFoundError(f"SMODES executable not found at: {settings.SMODES_PATH}")
+        raise FileNotFoundError(
+            f"SMODES executable not found at: {settings.SMODES_PATH}"
+        )
     command = f"{settings.SMODES_PATH} < {smodes_input} "
     process = subprocess.run(command, shell=True, capture_output=True, text=True)
     if process.returncode != 0:
@@ -49,6 +52,7 @@ class CustomGroup(click.Group):
         base_help = super().get_help(ctx)
         return BANNER + "\n\n" + "\n\n" + base_help
 
+
 @click.group(cls=CustomGroup, invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
@@ -56,14 +60,31 @@ def cli(ctx):
     if ctx.invoked_subcommand is None:
         click.echo(cli.get_help(ctx))
 
+
 @cli.command()
-@click.option("-a", "--add", multiple=True, type=click.Path(), help="Add one or more pseudopotential file paths")
-@click.option("-d", "--delete", multiple=True, type=click.Path(), help="Delete one or more pseudopotential file paths")
-@click.option("-l", "--list", "list_pseudos", is_flag=True, help="List current pseudopotentials")
+@click.option(
+    "-a",
+    "--add",
+    multiple=True,
+    type=click.Path(),
+    help="Add one or more pseudopotential file paths",
+)
+@click.option(
+    "-d",
+    "--delete",
+    multiple=True,
+    type=click.Path(),
+    help="Delete one or more pseudopotential file paths",
+)
+@click.option(
+    "-l", "--list", "list_pseudos", is_flag=True, help="List current pseudopotentials"
+)
 def pseudos(add, delete, list_pseudos):
     """Manage pseudopotential folder paths"""
     if (add or delete) and list_pseudos:
-        click.echo("Error: Specify only one action at a time (either add, delete, or list).")
+        click.echo(
+            "Error: Specify only one action at a time (either add, delete, or list)."
+        )
         return
 
     pm = PseudopotentialManager()
@@ -85,20 +106,24 @@ def pseudos(add, delete, list_pseudos):
     else:
         click.echo("Error: No action specified. Use --add, --delete, or --list.")
 
+
 @cli.command()
 @click.option("--pp-dir", type=click.Path(), help="Set the pseudopotential directory")
 @click.option("--working-dir", type=click.Path(), help="Set the working directory")
 @click.option("--ecut", type=int, help="Set default energy cutoff (hartree)")
 @click.option("--symm-prec", type=float, help="Set symmetry precision")
-@click.option("--kpt-density", type=float, help="Set default k-point density")
-@click.option("--slurm-time", type=str, help="Set SLURM time")
-@click.option("--slurm-nodes", type=int, help="Set SLURM nodes")
-@click.option("--slurm-ntasks", type=int, help="Set SLURM tasks per node")
-@click.option("--slurm-mem", type=str, help="Set SLURM memory")
-@click.option("--environment", type=str, help="Set environment")
-@click.option("--test-dir", type=click.Path(), help="Set test directory (relative to the WORKING_DIR)")
-@click.option('--smodes-path', type=click.Path(), help="Set the path to the SMODES executable file")
-def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_nodes, slurm_ntasks, slurm_mem, environment, test_dir, smodes_path):
+@click.option("--project-root", type=float, help="Set project root directory")
+@click.option(
+    "--test-dir",
+    type=click.Path(),
+    help="Set test directory (relative to the WORKING_DIR)",
+)
+@click.option(
+    "--smodes-path",
+    type=click.Path(),
+    help="Set the path to the SMODES executable file",
+)
+def config(pp_dir, working_dir, ecut, symm_prec, project_root, test_dir, smodes_path):
     """Manage global settings of the package"""
     updated = False
     if pp_dir:
@@ -113,29 +138,14 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
     if symm_prec:
         settings.SYMM_PREC = symm_prec
         updated = True
-    if kpt_density:
-        settings.DEFAULT_KPT_DENSITY = kpt_density
-        updated = True
-    if slurm_time:
-        settings.SLURM_HEADER["time"] = slurm_time
-        updated = True
-    if slurm_nodes:
-        settings.SLURM_HEADER["nodes"] = slurm_nodes
-        updated = True
-    if slurm_ntasks:
-        settings.SLURM_HEADER["ntasks-per-node"] = slurm_ntasks
-        updated = True
-    if slurm_mem:
-        settings.SLURM_HEADER["mem"] = slurm_mem
-        updated = True
-    if environment:
-        settings.ENVIRONMENT = environment
+    if project_root:
+        settings.PROJECT_ROOT = project_root
         updated = True
     if test_dir:
         settings.TEST_DIR = (settings.WORKING_DIR / Path(test_dir)).resolve()
         updated = True
-    if smodes_path: 
-        settings.SMODES_PATH = (settings.WORKING_DIR / Path(smodes_path).resolve())
+    if smodes_path:
+        settings.SMODES_PATH = settings.WORKING_DIR / Path(smodes_path).resolve()
         updated = True
 
     if updated:
@@ -146,9 +156,7 @@ def config(pp_dir, working_dir, ecut, symm_prec, kpt_density, slurm_time, slurm_
         click.echo(f"WORKING_DIR: {settings.WORKING_DIR}")
         click.echo(f"DEFAULT_ECUT: {settings.DEFAULT_ECUT}")
         click.echo(f"SYMM_PREC: {settings.SYMM_PREC}")
-        click.echo(f"DEFAULT_KPT_DENSITY: {settings.DEFAULT_KPT_DENSITY}")
-        click.echo(f"SLURM_HEADER: {settings.SLURM_HEADER}")
-        click.echo(f"ENVIRONMENT: {settings.ENVIRONMENT}")
+        click.echo(f"PROJECT_ROOT: {settings.PROJECT_ROOT}")
         click.echo(f"TEST_DIR: {settings.TEST_DIR}")
     else:
         click.echo("No settings were updated.")
@@ -164,17 +172,25 @@ def show_config():
     click.echo(f"WORKING_DIR: {settings_instance.WORKING_DIR}")
     click.echo(f"DEFAULT_ECUT: {settings_instance.DEFAULT_ECUT}")
     click.echo(f"SYMM_PREC: {settings_instance.SYMM_PREC}")
-    click.echo(f"DEFAULT_KPT_DENSITY: {settings_instance.DEFAULT_KPT_DENSITY}")
-    click.echo(f"SLURM_HEADER: {settings_instance.SLURM_HEADER}")
-    click.echo(f"ENVIRONMENT: {settings_instance.ENVIRONMENT}")
+    click.echo(f"PROJECT_ROOT: {settings_instance.PROJECT_ROOT}")
     click.echo(f"TEST_DIR: {settings_instance.TEST_DIR}")
 
+
 @cli.command()
-@click.option("-a", "--add", multiple=True, type=click.Path(), help="Add a template file path")
-@click.option("-d", "--delete", multiple=True, type=click.Path(), help="Delete a template file path")
+@click.option(
+    "-a", "--add", multiple=True, type=click.Path(), help="Add a template file path"
+)
+@click.option(
+    "-d",
+    "--delete",
+    multiple=True,
+    type=click.Path(),
+    help="Delete a template file path",
+)
 def templates(add, delete):
     """Manage templates"""
     from symmstate.templates.template_manager import TemplateManager
+
     if add and delete:
         click.echo("Error: Specify only one action at a time (either add or delete).")
         return
@@ -191,25 +207,55 @@ def templates(add, delete):
     else:
         click.echo("Error: No action specified. Use --add or --delete.")
 
+
 @cli.command()
 @click.option("--name", default="EnergyProgram", help="Name of the energy program")
-@click.option("--num-datapoints", type=int, default=3, help="Number of perturbed cells to generate")
-@click.option("--abi-file", type=click.Path(exists=True), required=True, help="Path to the Abinit file")
+@click.option(
+    "--num-datapoints",
+    type=int,
+    default=3,
+    help="Number of perturbed cells to generate",
+)
+@click.option(
+    "--abi-file",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the Abinit file",
+)
 @click.option("--min-amp", type=float, default=0.0, help="Minimum amplitude (bohr)")
 @click.option("--max-amp", type=float, default=0.5, help="Maximum amplitude (bohr)")
-@click.option("--smodes-input", type=click.Path(exists=True), required=True, help="Path to the SMODES input file")
-@click.option("--target-irrep", type=str, required=True, help="Target irreducible representation")
-@click.option("--unstable-threshold", type=float, default=-20, help="Unstable threshold value")
+@click.option(
+    "--smodes-input",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the SMODES input file",
+)
+@click.option(
+    "--target-irrep", type=str, required=True, help="Target irreducible representation"
+)
+@click.option(
+    "--unstable-threshold", type=float, default=-20, help="Unstable threshold value"
+)
 @click.option("--disp-mag", type=float, default=0.001, help="Displacement magnitude")
-def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, target_irrep, unstable_threshold, disp_mag):
+def energy(
+    name,
+    num_datapoints,
+    abi_file,
+    min_amp,
+    max_amp,
+    smodes_input,
+    target_irrep,
+    unstable_threshold,
+    disp_mag,
+):
     """
     Run the Energy Program.
-    
+
     Required inputs:
       - abi-file: Path to a valid Abinit file.
       - smodes-input: Path to the SMODES input file.
       - target-irrep: Target irreducible representation.
-      
+
     Other parameters (with defaults) can be adjusted via options.
     """
     click.echo("Running Energy Program with the following parameters:")
@@ -224,9 +270,11 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
     click.echo(f"Unstable threshold: {unstable_threshold}")
 
     # Create a SlurmFile object using the SLURM header from Settings.
-    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items())
+    slurm_header = "".join(
+        f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items()
+    )
     slurm_obj = SlurmFile(sbatch_header_source=slurm_header, num_processors=1)
-    
+
     energy_prog = EnergyProgram(
         name=name,
         num_datapoints=num_datapoints,
@@ -242,26 +290,63 @@ def energy(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, targe
     )
     energy_prog.run_program()
 
+
 @cli.command()
-@click.option("--name", default="ElectroTensorProgram", help="Name of the electrotensor program")
-@click.option("--num-datapoints", type=int, default=3, help="Number of perturbed cells to generate")
-@click.option("--abi-file", type=click.Path(exists=True), required=True, help="Path to the Abinit file")
+@click.option(
+    "--name", default="ElectroTensorProgram", help="Name of the electrotensor program"
+)
+@click.option(
+    "--num-datapoints",
+    type=int,
+    default=3,
+    help="Number of perturbed cells to generate",
+)
+@click.option(
+    "--abi-file",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the Abinit file",
+)
 @click.option("--min-amp", type=float, default=0.0, help="Minimum amplitude (bohr)")
 @click.option("--max-amp", type=float, default=0.5, help="Maximum amplitude (bohr)")
-@click.option("--smodes-input", type=click.Path(exists=True), required=True, help="Path to the SMODES input file")
-@click.option("--target-irrep", type=str, required=True, help="Target irreducible representation")
-@click.option("--unstable-threshold", type=float, default=-20, help="Unstable threshold value")
+@click.option(
+    "--smodes-input",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the SMODES input file",
+)
+@click.option(
+    "--target-irrep", type=str, required=True, help="Target irreducible representation"
+)
+@click.option(
+    "--unstable-threshold", type=float, default=-20, help="Unstable threshold value"
+)
 @click.option("--disp-mag", type=float, default=0.001, help="Displacement magnitude")
-@click.option("--piezo", is_flag=True, help="Run piezoelectric calculations instead of flexoelectric")
-def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input, target_irrep, unstable_threshold, disp_mag, piezo):
+@click.option(
+    "--piezo",
+    is_flag=True,
+    help="Run piezoelectric calculations instead of flexoelectric",
+)
+def electrotensor(
+    name,
+    num_datapoints,
+    abi_file,
+    min_amp,
+    max_amp,
+    smodes_input,
+    target_irrep,
+    unstable_threshold,
+    disp_mag,
+    piezo,
+):
     """
     Run the ElectroTensor Program.
-    
+
     Required inputs:
       - abi-file: Path to a valid Abinit file.
       - smodes-input: Path to the SMODES input file.
       - target-irrep: Target irreducible representation.
-      
+
     Other parameters (with defaults) can be adjusted via options.
     """
     click.echo("Running ElectroTensor Program with the following parameters:")
@@ -276,9 +361,11 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
     click.echo(f"Unstable threshold: {unstable_threshold}")
     click.echo(f"Piezo calculation: {piezo}")
 
-    slurm_header = "".join(f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items())
+    slurm_header = "".join(
+        f"#SBATCH --{key}={value}\n" for key, value in settings.SLURM_HEADER.items()
+    )
     slurm_obj = SlurmFile(sbatch_header_source=slurm_header, num_processors=1)
-    
+
     et_prog = ElectroTensorProgram(
         name=name,
         num_datapoints=num_datapoints,
@@ -291,22 +378,31 @@ def electrotensor(name, num_datapoints, abi_file, min_amp, max_amp, smodes_input
         symm_prec=settings.SYMM_PREC,
         disp_mag=disp_mag,
         unstable_threshold=unstable_threshold,
-        piezo_calculation=piezo
+        piezo_calculation=piezo,
     )
     et_prog.run_program()
 
+
 @cli.command()
-@click.option("--run", type=click.Path(exists=True), required=False,
-              help="Path to the SMODES input file")
-@click.option("--sym_basis", is_flag=True, required=False,
-              help="Generate the symmetry adapted basis for an Abinit File")
+@click.option(
+    "--run",
+    type=click.Path(exists=True),
+    required=False,
+    help="Path to the SMODES input file",
+)
+@click.option(
+    "--sym_basis",
+    is_flag=True,
+    required=False,
+    help="Generate the symmetry adapted basis for an Abinit File",
+)
 @click.argument("abi_file", type=click.Path(exists=True), required=False)
 @click.argument("smodes_input", type=click.Path(exists=True), required=False)
 @click.argument("irrep", type=str, required=False)
 def smodes(run, sym_basis, abi_file, smodes_input, irrep):
     """
     Run SMODES using the provided SMODES input file or generate the symmetry adapted basis.
-    
+
     This command uses the global SMODES path from Settings.
     """
     if run:
@@ -323,9 +419,13 @@ def smodes(run, sym_basis, abi_file, smodes_input, irrep):
             click.echo("Error: Missing required arguments for --symm_adapted_basis.")
             click.echo("You must specify 'abi_file', 'smodes_input', and 'irrep'.")
             return
-        
-        click.echo(f"Generating symmetry adapted basis for '{abi_file}' with '{smodes_input}' and irrep '{irrep}'.")
-        abi_file = AbinitFile(abi_file=abi_file, smodes_input=smodes_input, target_irrep=irrep)
+
+        click.echo(
+            f"Generating symmetry adapted basis for '{abi_file}' with '{smodes_input}' and irrep '{irrep}'."
+        )
+        abi_file = AbinitFile(
+            abi_file=abi_file, smodes_input=smodes_input, target_irrep=irrep
+        )
         click.echo(abi_file)
 
 
@@ -334,11 +434,13 @@ def test():
     """Run test suites for individual modules"""
     pass
 
+
 @test.command()
 def abinit_file():
     """Run tests for test_abinit_file.py"""
     test_path = settings.TEST_DIR / "unit" / "test_abinit_file.py"
     subprocess.run(["pytest", str(test_path)], check=True)
+
 
 @test.command()
 def abinit_unit_cell():
@@ -346,11 +448,13 @@ def abinit_unit_cell():
     test_path = settings.TEST_DIR / "unit" / "test_abinit_unit_cell.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
+
 @test.command()
 def electrotensor():
     """Run tests for test_electro_tensor.py"""
     test_path = settings.TEST_DIR / "unit" / "test_electro_tensor.py"
     subprocess.run(["pytest", str(test_path)], check=True)
+
 
 @test.command()
 def energy_program():
@@ -358,11 +462,13 @@ def energy_program():
     test_path = settings.TEST_DIR / "unit" / "test_energy_program.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
+
 @test.command()
 def perturbations():
     """Run tests for test_perturbations.py"""
     test_path = settings.TEST_DIR / "unit" / "test_perturbations.py"
     subprocess.run(["pytest", str(test_path)], check=True)
+
 
 @test.command()
 def pseudopotential():
@@ -370,11 +476,13 @@ def pseudopotential():
     test_path = settings.TEST_DIR / "unit" / "test_pseudopotential.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
+
 @test.command()
 def slurm_jobs():
     """Run tests for test_slurm_jobs.py"""
     test_path = settings.TEST_DIR / "unit" / "test_slurm_jobs.py"
     subprocess.run(["pytest", str(test_path)], check=True)
+
 
 @test.command()
 def smodes_calculator():
@@ -382,17 +490,20 @@ def smodes_calculator():
     test_path = settings.TEST_DIR / "unit" / "test_smodes_calculator.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
+
 @test.command()
 def template_manager():
     """Run tests for test_template_manager.py"""
     test_path = settings.TEST_DIR / "unit" / "test_template_manager.py"
     subprocess.run(["pytest", str(test_path)], check=True)
 
+
 @test.command()
 def unit_cell_module():
     """Run tests for test_unit_cell_module.py"""
     test_path = settings.TEST_DIR / "unit" / "test_unit_cell_module.py"
     subprocess.run(["pytest", str(test_path)], check=True)
+
 
 @test.command()
 def test_all():
@@ -403,15 +514,28 @@ def test_all():
         return
     subprocess.run(["pytest", str(test_path)], check=True)
 
+
 @cli.command()
-@click.option("--results-file", type=click.Path(exists=True), required=True,
-              help="Path to the results file produced by a perturbation run")
-@click.option("--analysis-type", type=click.Choice(["energy", "flexo", "grid", "varying"]),
-              required=True, help="Type of data analysis to perform")
+@click.option(
+    "--results-file",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the results file produced by a perturbation run",
+)
+@click.option(
+    "--analysis-type",
+    type=click.Choice(["energy", "flexo", "grid", "varying"]),
+    required=True,
+    help="Type of data analysis to perform",
+)
 @click.option("--save", is_flag=True, help="Save the generated plot to a file")
 @click.option("--filename", default="analysis_plot", help="Filename for the saved plot")
-@click.option("--threshold", type=float, default=None,
-              help="Threshold value for 'varying' analysis (optional)")
+@click.option(
+    "--threshold",
+    type=float,
+    default=None,
+    help="Threshold value for 'varying' analysis (optional)",
+)
 def data_analysis(results_file, analysis_type, save, filename, threshold):
     """Perform data analysis on a results file produced by a perturbation run."""
     amplitudes, energies, flexo_amps, flexo_tensors = load_flexo_data(results_file)
@@ -424,7 +548,7 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
         fig = plot_flexo_grid(flexo_amps, flexo_tensors)
     elif analysis_type == "varying":
         fig = plot_varying_components(flexo_amps, flexo_tensors, threshold=threshold)
-    
+
     if save:
         if analysis_type in ["flexo", "grid", "varying"]:
             if analysis_type == "grid":
@@ -445,15 +569,28 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
         else:
             ax.get_figure().show()
 
+
 @cli.command()
-@click.option("--results-file", type=click.Path(exists=True), required=True,
-              help="Path to the results file produced by a perturbation run")
-@click.option("--analysis-type", type=click.Choice(["energy", "flexo", "grid", "varying"]),
-              required=True, help="Type of data analysis to perform")
+@click.option(
+    "--results-file",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the results file produced by a perturbation run",
+)
+@click.option(
+    "--analysis-type",
+    type=click.Choice(["energy", "flexo", "grid", "varying"]),
+    required=True,
+    help="Type of data analysis to perform",
+)
 @click.option("--save", is_flag=True, help="Save the generated plot to a file")
 @click.option("--filename", default="analysis_plot", help="Filename for the saved plot")
-@click.option("--threshold", type=float, default=None,
-              help="Threshold value for 'varying' analysis (optional)")
+@click.option(
+    "--threshold",
+    type=float,
+    default=None,
+    help="Threshold value for 'varying' analysis (optional)",
+)
 def data_analysis(results_file, analysis_type, save, filename, threshold):
     """Perform data analysis on a results file produced by a perturbation run."""
     amplitudes, energies, flexo_amps, flexo_tensors = load_flexo_data(results_file)
@@ -466,7 +603,7 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
         fig = plot_flexo_grid(flexo_amps, flexo_tensors)
     elif analysis_type == "varying":
         fig = plot_varying_components(flexo_amps, flexo_tensors, threshold=threshold)
-    
+
     if save:
         if analysis_type in ["flexo", "grid", "varying"]:
             if analysis_type == "grid":
@@ -487,23 +624,35 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
         else:
             ax.get_figure().show()
 
+
 @cli.command()
-@click.option("--flexotensor", type=click.Path(exists=True), required=False,
-            help="Grab the flexoelectric tensor of an Abinit file")
-@click.option("--piezotensor", type=click.Path(exists=True), required=False, 
-            help="Grab the piezoelectric tensor of an Abinit file")
-@click.option("--energy", type=click.Path(exists=True), required=False, 
-            help="Grab the energy from an Abinit file")
+@click.option(
+    "--flexotensor",
+    type=click.Path(exists=True),
+    required=False,
+    help="Grab the flexoelectric tensor of an Abinit file",
+)
+@click.option(
+    "--piezotensor",
+    type=click.Path(exists=True),
+    required=False,
+    help="Grab the piezoelectric tensor of an Abinit file",
+)
+@click.option(
+    "--energy",
+    type=click.Path(exists=True),
+    required=False,
+    help="Grab the energy from an Abinit file",
+)
 def grab(flexotensor, piezotensor, energy):
     """Grab various quantities from an Abinit file"""
 
     if flexotensor:
         tensor = DataParser.grab_flexo_tensor(flexotensor)
         click.echo(
-            f"Flexoelectric tensor located in the file {flexotensor} is:\n"
-            f"{tensor}"
+            f"Flexoelectric tensor located in the file {flexotensor} is:\n" f"{tensor}"
         )
-    
+
     if piezotensor:
         tensor_clamped, tensor_relaxed = DataParser.grab_flexo_tensor(piezotensor)
         click.echo(
@@ -511,13 +660,11 @@ def grab(flexotensor, piezotensor, energy):
             f"Clamped piezoelectric tensor:\n{tensor_clamped}\n"
             f"Relaxed piezoelectric tensor:\n{tensor_relaxed}"
         )
-        
+
     if energy:
         energy_value = DataParser.grab_energy(energy)
-        click.echo(
-            f"Energy located in the file {energy} is:\n"
-            f"{energy_value}"
-        )
+        click.echo(f"Energy located in the file {energy} is:\n" f"{energy_value}")
+
 
 # Create a single Documentation instance.
 docs = Documentation()
@@ -528,11 +675,28 @@ ABINIT_UNIT_CELL_DOC = docs.ABINIT_UNIT_CELL_DOC
 ABINIT_FILE_DOC = docs.ABINIT_FILE_DOC
 SLURM_FILE_DOC = docs.SLURM_FILE_DOC
 
+
 @cli.command()
-@click.option("--unit-cell", is_flag=True, help="Show extended documentation for the UnitCell class")
-@click.option("--abinit-cell", is_flag=True, help="Show extended documentation for the AbinitUnitCell class")
-@click.option("--abinit-file", is_flag=True, help="Show extended documentation for the AbinitFile class")
-@click.option("--slurm-file", is_flag=True, help="Show extended documentation for the SlurmFile class")
+@click.option(
+    "--unit-cell",
+    is_flag=True,
+    help="Show extended documentation for the UnitCell class",
+)
+@click.option(
+    "--abinit-cell",
+    is_flag=True,
+    help="Show extended documentation for the AbinitUnitCell class",
+)
+@click.option(
+    "--abinit-file",
+    is_flag=True,
+    help="Show extended documentation for the AbinitFile class",
+)
+@click.option(
+    "--slurm-file",
+    is_flag=True,
+    help="Show extended documentation for the SlurmFile class",
+)
 def examples(unit_cell, abinit_cell, abinit_file, slurm_file):
     """Displays examples and extended documentation for the SymmState package."""
     if unit_cell:
@@ -547,10 +711,5 @@ def examples(unit_cell, abinit_cell, abinit_file, slurm_file):
         click.echo("No example selected. Please specify one of the available options.")
 
 
-
-
 if __name__ == "__main__":
     cli()
-
-
-

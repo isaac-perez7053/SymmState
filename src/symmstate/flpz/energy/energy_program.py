@@ -2,46 +2,55 @@ from symmstate.config.symm_state_settings import settings
 from symmstate.flpz.smodes_processor import SmodesProcessor
 from symmstate.flpz.perturbations import Perturbations
 from symmstate.flpz import FlpzCore
+from symmstate.slurm import SlurmFile
+
 
 class EnergyProgram(FlpzCore):
     """
-    EnergyProgram runs a series of SMODES and perturbation calculations to analyze 
+    EnergyProgram runs a series of SMODES and perturbation calculations to analyze
     energy, piezoelectric, and flexoelectric properties.
     """
 
     def __init__(
         self,
-        name=None,
-        num_datapoints=None,
-        abi_file=None,
-        min_amp=None,
-        max_amp=None,
-        smodes_input=None,
-        target_irrep=None,
-        slurm_obj=None,
-        symm_prec=1e-5,
-        disp_mag=0.001,
-        unstable_threshold=-20,
+        name: str = None,
+        num_datapoints: int = None,
+        abi_file: str = None,
+        min_amp: int = None,
+        max_amp: int = None,
+        smodes_input: str = None,
+        target_irrep: str = None,
+        slurm_obj: SlurmFile = None,
+        disp_mag: float = 0.001,
+        unstable_threshold: float = -20,
     ):
         # Initialize the FlpzCore superclass.
-        super().__init__(name=name, num_datapoints=num_datapoints, abi_file=abi_file, min_amp=min_amp, max_amp=max_amp)
-        self._logger.info("Initializing EnergyProgram")
+        super().__init__(
+            name=name,
+            num_datapoints=num_datapoints,
+            abi_file=abi_file,
+            min_amp=min_amp,
+            max_amp=max_amp,
+        )
 
         self.smodes_input = smodes_input
         self.target_irrep = target_irrep
         self.slurm_obj = slurm_obj  # A SlurmFile instance must be provided
-        self.symm_prec = symm_prec
+        self.symm_prec = settings.SYMM_PREC
         self.disp_mag = disp_mag
         self.unstable_threshold = unstable_threshold
 
         self.__smodes_processor = None
         self.__perturbations = []
 
+        # Set logger for slurm_obj
+        self.slurm_obj.set_logger(self._logger)
+
     def run_program(self):
         ascii_str1 = """
  ____                                _        _       
 / ___| _   _ _ __ ___  _ __ ___  ___| |_ __ _| |_ ___ 
-\___ \| | | | '_ ` _ \| '_ ` _ \/ __| __/ _` | __/ _ \
+\___ \| | | | '_ ` _ \| '_ ` _ \/ __| __/ _` | __/ _ \ 
  ___) | |_| | | | | | | | | | | \__ \ || (_| | ||  __/
 |____/ \__, |_| |_| |_|_| |_| |_|___/\__\__,_|\__\___|
        |___/                                          
@@ -85,14 +94,14 @@ class EnergyProgram(FlpzCore):
  _____                      _           
 | ____|_ __   ___ _ __ __ _(_) ___  ___ 
 |  _| | '_ \ / _ \ '__/ _` | |/ _ \/ __|
-| |___| | | |  __/ | | (_| | |  __/\__ \
+| |___| | | |  __/ | | (_| | |  __/\__ \ 
 |_____|_| |_|\___|_|  \__, |_|\___||___/
                       |___/             
 """
             self._logger.info(ascii_str3)
 
-            # Update the Abinit file based on SMODES output.
-            self.update_abinit_file("dist_0.abi")
+            # Update smodes processor abinit file:
+            smodes_proc.abinit_file.update_unit_cell_parameters()
 
             # For each unstable phonon, create a new Perturbations instance using the same slurm_obj.
             for i, pert in enumerate(normalized_phonon_vecs):
@@ -107,10 +116,15 @@ class EnergyProgram(FlpzCore):
                 )
                 self.__perturbations.append(pert_obj)
                 pert_obj.generate_perturbations()
+                self._logger.info("Generated Perturbations!")
                 pert_obj.calculate_energy_of_perturbations()
-                self._logger.info(f"Amplitudes of Unstable Phonon {i}: {pert_obj.list_amps}")
-                self._logger.info(f"Energies of Unstable Phonon {i}: {pert_obj.results['energies']}")
-                pert_obj.data_analysis(save_plot=True, filename=f"energy_vs_amplitude_{i}")
+                self._logger.info(
+                    f"Amplitudes of Unstable Phonon {i}: {pert_obj.list_amps}"
+                )
+                self._logger.info(
+                    f"Energies of Unstable Phonon {i}: {pert_obj.results['energies']}"
+                )
+                pert_obj.record_data("recorded_energies.txt")
 
         ascii_str4 = """
  _____ _       _     _              _ 
@@ -119,7 +133,7 @@ class EnergyProgram(FlpzCore):
 |  _| | | | | | \__ \ | | |  __/ (_| |
 |_|   |_|_| |_|_|___/_| |_|\___|\__,_|
 """
-                                   
+
         self._logger.info(ascii_str4)
 
     def get_smodes_processor(self):
@@ -127,6 +141,3 @@ class EnergyProgram(FlpzCore):
 
     def get_perturbations(self):
         return self.__perturbations
-
-
-

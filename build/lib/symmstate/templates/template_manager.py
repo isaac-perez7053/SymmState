@@ -3,9 +3,10 @@ import re
 from typing import Dict, Optional
 from symmstate import SymmStateCore
 
+
 class TemplateManager(SymmStateCore):
     """Manages creation and tracking of Abinit template files"""
-    
+
     def __init__(self, package_name: str = "symmstate"):
         self.package_name = package_name
         self.template_dir = self._get_template_dir()
@@ -22,10 +23,12 @@ class TemplateManager(SymmStateCore):
         """Load existing templates into registry on initialization"""
         if not os.path.exists(self.template_dir):
             return
-            
+
         for file_name in os.listdir(self.template_dir):
             if file_name.endswith(".abi"):
-                self.template_registry[file_name] = os.path.join(self.template_dir, file_name)
+                self.template_registry[file_name] = os.path.join(
+                    self.template_dir, file_name
+                )
 
     def create_template(self, input_file: str, template_name: str) -> str:
         """
@@ -35,28 +38,28 @@ class TemplateManager(SymmStateCore):
         # Validate template name
         if not template_name.endswith(".abi"):
             template_name += ".abi"
-            
+
         if self.template_exists(template_name):
             raise ValueError(f"Template '{template_name}' already exists")
 
         # Create template content
-        with open(input_file, 'r') as f:
+        with open(input_file, "r") as f:
             content = f.read()
         template_content = self._replace_variables(content)
 
         # Ensure templates directory exists
         os.makedirs(self.template_dir, exist_ok=True)
-        
+
         # Create full output path
         output_path = os.path.join(self.template_dir, template_name)
-        
+
         # Write template file
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(template_content)
 
         # Add to registry
         self.template_registry[template_name] = output_path
-        
+
         return output_path
 
     def template_exists(self, template_name: str) -> bool:
@@ -68,9 +71,10 @@ class TemplateManager(SymmStateCore):
     def get_template_path(self, template_name: str) -> Optional[str]:
         """Get full path for a template by name"""
         return self.template_registry.get(template_name)
-    
+
     def _replace_variables(self, content: str) -> str:
         """Replace ABINIT variables with template placeholders"""
+
         def is_numeric_line(line: str) -> bool:
             tokens = line.strip().split()
             if not tokens:
