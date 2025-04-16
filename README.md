@@ -29,6 +29,7 @@ To find some basic tests, run:
 symmstate test --help
 ```
 
+- Note, some of the tests use the pseudopotentials CaRev.psp8, TiRev.psp8, and ORev.psp8. This will require you to download from the pseudos in the pseudopotential folder before successfully running the tests. 
 ## Features
 
 - **Symmetry Analysis**: Perform advanced symmetry analysis on solid-state materials.
