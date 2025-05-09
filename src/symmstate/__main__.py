@@ -1,4 +1,4 @@
-from symmstate.cli import cli  # Adjust the import path as needed
+from symmstate.cli import cli  
 
 def main():
     from .cli import cli

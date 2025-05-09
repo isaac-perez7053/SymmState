@@ -3,6 +3,7 @@ import time
 from typing import Optional
 from symmstate.slurm.slurm_header import SlurmHeader
 import logging
+from symmstate._symm_state_core import SymmStateCore
 
 
 class SlurmFile:
@@ -59,8 +60,8 @@ class SlurmFile:
     def write_batch_script(
         self,
         input_file: str = "input.in",
-        log_file: str = "job.log",
-        batch_name: str = "job.sh",
+        log_file: str = "slurm_job.log",
+        batch_name: str = "slurm_job.sh",
         extra_commands: Optional[str] = None,
     ) -> str:
         """
@@ -106,6 +107,7 @@ class SlurmFile:
             script_content += f"\n\n{extra_commands}\n"
 
         # Write the script to disk
+        batch_name = SymmStateCore._get_unique_filename(batch_name)
         with open(batch_name, "w") as script_file:
             script_file.write(script_content)
 

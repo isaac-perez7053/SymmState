@@ -192,7 +192,7 @@ class AbinitFile(AbinitUnitCell):
         input_file: str,
         slurm_obj: Optional[SlurmFile],
         *,
-        batch_name: Optional[str] = None,
+        batch_name: Optional[str] = "abinit_job.sh",
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
     ) -> None:
@@ -622,10 +622,12 @@ kptopt2 2
         lines.append("# Definition of the k-point grid")
         lines.append("#--------------------------")
         lines.append(f"nshiftk {self.vars.get('nshiftk', '1')}")
-        lines.append("kptrlatt")
         if self.vars.get("kptrlatt") is not None:
+            lines.append("kptrlatt")
             for row in self.vars.get("kptrlatt"):
                 lines.append(f"  {' '.join(map(str, row))}")
+        elif self.vars.get("ngkpt") is not None:
+            lines.append(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))}")
         # Make sure to split shiftk if it's a string
         shiftk = self.vars.get("shiftk", "0.5 0.5 0.5")
         if isinstance(shiftk, str):

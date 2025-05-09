@@ -1,6 +1,6 @@
 [project]
 name = "symmstate"
-version = "0.9.1"
+version = "0.9.2"
 description = "Solid-state Physics Package for Symmetry Based Calculations!"
 readme = "README.md"
 requires-python = ">=3.8"

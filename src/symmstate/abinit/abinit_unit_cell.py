@@ -13,7 +13,7 @@ import os
 from pymatgen.core import Structure, Element
 
 from symmstate.unit_cell_module import UnitCell
-from symmstate.utils.abinit_parser import AbinitParser
+from symmstate.abinit.abinit_parser import AbinitParser
 from symmstate.utils.misc import Misc
 from symmstate.pseudopotentials import PseudopotentialManager
 
