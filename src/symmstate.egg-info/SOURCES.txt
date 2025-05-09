@@ -15,6 +15,7 @@ src/symmstate.egg-info/requires.txt
 src/symmstate.egg-info/top_level.txt
 src/symmstate/abinit/__init__.py
 src/symmstate/abinit/abinit_file.py
+src/symmstate/abinit/abinit_parser.py
 src/symmstate/abinit/abinit_unit_cell.py
 src/symmstate/config/__init__.py
 src/symmstate/config/symm_state_settings.py
@@ -41,7 +42,6 @@ src/symmstate/slurm/slurm_header.py
 src/symmstate/templates/__init__.py
 src/symmstate/templates/template_manager.py
 src/symmstate/utils/__init__.py
-src/symmstate/utils/abinit_parser.py
 src/symmstate/utils/data_parser.py
 src/symmstate/utils/documentation.py
 src/symmstate/utils/exceptions.py
