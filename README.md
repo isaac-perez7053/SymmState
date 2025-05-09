@@ -16,7 +16,7 @@ To install the SymmState package, follow these steps:
 
 1. Install the package using pip:
     ```bash
-    pip install symmstate
+    pip install symmstate==0.9.2
     ```
 3. Download Abinit [here](https://abinit.github.io/abinit_web/) and follow their installation instructions
 4. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)
@@ -29,6 +29,7 @@ To find some basic tests, run:
 symmstate test --help
 ```
 
+- Note, some of the tests use the pseudopotentials CaRev.psp8, TiRev.psp8, and ORev.psp8. This will require you to download from the pseudos in the pseudopotential folder before successfully running the tests. 
 ## Features
 
 - **Symmetry Analysis**: Perform advanced symmetry analysis on solid-state materials.
