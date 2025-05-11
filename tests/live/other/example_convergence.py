@@ -13,7 +13,7 @@ def convergence_err(energy_arr):
     """
     Calculate convergence errors between successive energy values.
 
-    This function computes the convergence error for each successive pair of energy 
+    This function computes the convergence error for each successive pair of energy
     values in energy_arr using the formula:
 
         error_i = (E[i] - E[i+1]) / E[i+1]
@@ -32,7 +32,7 @@ def convergence_err(energy_arr):
         energy_post = energy_arr[i + 1]
         # Guard against division by zero
         if energy_post == 0:
-            error = float('inf')
+            error = float("inf")
         else:
             error = (energy_pre - energy_post) / energy_post
         errors.append(error)
@@ -104,7 +104,7 @@ print(convergence_err(energy))
 
 # Plot results and save plot
 fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(ecuts, energy, marker='o', markersize=8, linewidth=1.5)
+ax.plot(ecuts, energy, marker="o", markersize=8, linewidth=1.5)
 ax.set(xlabel="ecut (Ha)", ylabel="Energy (Ha)", title="Energy vs Ecut")
 ax.grid(True, alpha=0.3)
 

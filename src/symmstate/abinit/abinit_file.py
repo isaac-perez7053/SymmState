@@ -156,10 +156,12 @@ class AbinitFile(AbinitUnitCell):
                 "\n#--------------------------\n# Definition of the k-point grid\n#--------------------------\n"
             )
             outf.write(f"nshiftk {self.vars.get('nshiftk', '1')} \n")
-            outf.write("kptrlatt\n")
-            if self.vars.get("kptrlatt", None) is not None:
-                for i in self.vars["kptrlatt"]:
-                    outf.write(f"  {' '.join(map(str, i))}\n")
+            if self.vars.get("kptrlatt") is not None:
+                outf.write("kptrlatt")
+                for row in self.vars.get("kptrlatt"):
+                    outf.write(f"  {' '.join(map(str, row))} \n")
+            elif self.vars.get("ngkpt") is not None:
+                outf.write(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))} \n")
             outf.write(
                 f"shiftk {' '.join(map(str, self.vars.get('shiftk', '0.5 0.5 0.5')))} \n"
             )
@@ -195,7 +197,7 @@ class AbinitFile(AbinitUnitCell):
         batch_name: Optional[str] = "abinit_job.sh",
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
-    ) -> None:
+    ) -> str:
         """
         Run the Abinit simulation via batch submission or direct execution.
 
@@ -235,8 +237,6 @@ class AbinitFile(AbinitUnitCell):
             with open(file_path, "w") as file:
                 file.write(content)
             try:
-                batch_name = AbinitFile._get_unique_filename(f"{batch_name}.sh")
-                batch_name = os.path.basename(batch_name)
 
                 # Use the provided SlurmFile object.
                 script_created = slurm_obj.write_batch_script(
@@ -259,6 +259,8 @@ class AbinitFile(AbinitUnitCell):
             self._logger.info(
                 f"Abinit executed directly. Output written to '{log_file}'."
             )
+
+        return input_file
 
     def run_piezo_calculation(
         self,
@@ -625,9 +627,9 @@ kptopt2 2
         if self.vars.get("kptrlatt") is not None:
             lines.append("kptrlatt")
             for row in self.vars.get("kptrlatt"):
-                lines.append(f"  {' '.join(map(str, row))}")
+                lines.append(f"  {' '.join(map(str, row))} \n")
         elif self.vars.get("ngkpt") is not None:
-            lines.append(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))}")
+            lines.append(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))} \n")
         # Make sure to split shiftk if it's a string
         shiftk = self.vars.get("shiftk", "0.5 0.5 0.5")
         if isinstance(shiftk, str):

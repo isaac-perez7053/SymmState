@@ -67,8 +67,22 @@ class SymmStateCore:
         return new_file_path
 
     @staticmethod
-    def _get_unique_filename(base_name, directory="."):
-        """"""
+    def _get_unique_filename(base_name, directory=".") -> str:
+        """
+        Get the unique filename of a file
+
+        Parameters
+        ----------
+        base_name: str
+          The name of the file
+        directory: str
+          The directory of the file
+
+        Returns
+        -------
+        new_name: str
+          The new unique file name
+        """
         # Get the full path for the base file
         full_path = os.path.join(directory, base_name)
 

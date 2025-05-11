@@ -116,86 +116,188 @@ class DataParser:
     
 
     @staticmethod
-    def parse_matrix(content: str, key: str, dtype: type) -> Union[np.ndarray, None]:
-        """Improved matrix parsing that allows negative numbers.
-
-        Searches for a line starting with the key and then reads subsequent lines
-        that start with either a digit or a minus sign.
+    def parse_matrix(
+        content: str,
+        key: str,
+        dtype: type,
+        all_matches: bool = False
+    ) -> Union[np.ndarray, List[np.ndarray], None]:
         """
-        lines = content.split("\n")
-        for i, line in enumerate(lines):
-            if re.fullmatch(rf"\s*{key}\s*", line):
-                matrix = []
-                for j in range(i + 1, len(lines)):
-                    next_line = lines[j].strip()
-                    # Allow lines starting with '-' or a digit.
-                    if not next_line or not re.match(r"^[-\d]", next_line):
-                        break
-                    matrix.append([dtype(x) for x in next_line.split()])
-                return np.array(matrix) if matrix else None
-        return None
+        Extract one or more matrices that follow lines containing exactly `key`.
 
-    @staticmethod
-    def parse_scalar(content: str, key: str, dtype: type) -> Union[type, None]:
-        match = re.search(rf"{key}\s+([\d\.+-dDeE]+)", content)
-        if match:
-            # Replace 'd' or 'D' with 'e' for compatibility with Python floats
-            value = match.group(1).replace("d", "e").replace("D", "e")
-            return dtype(value)
-        return None
-
-    @staticmethod
-    def parse_string(content: str, key: str) -> Union[str, None]:
+        A matrix is defined as the block of subsequent non-empty lines
+        each starting with a digit or '-' (allowing negative numbers).
+        
+        By default returns the first match as an np.ndarray.
+        If all_matches=True, returns a list of np.ndarrays.
+        Returns None if no matching key line or no data.
         """
-        Parse a string value from content corresponding to a given key.
+        # Pattern to find lines that are exactly `key` (with optional indent)
+        key_pattern = re.compile(rf'^\s*{re.escape(key)}\s*$', flags=re.MULTILINE)
+        lines = content.splitlines()
 
-        The function searches for the key followed by one or more spaces and then a
-        double-quoted string, and returns the extracted string. If the key is not found,
-        or if a quoted string is not present, the function returns None.
+        matrices: List[np.ndarray] = []
+        # Iterate over every line that matches the key
+        for match in key_pattern.finditer(content):
+            # figure out which line number it was
+            start_line = content[: match.start()].count("\n")
+            block: List[List] = []
+            # collect following lines that start with digit or '-'
+            for ln in lines[start_line + 1 :]:
+                stripped = ln.strip()
+                if not stripped or not re.match(r'^[-\d]', stripped):
+                    break
+                # convert each token in that row
+                row = [dtype(tok) for tok in stripped.split()]
+                block.append(row)
+            if block:
+                matrices.append(np.array(block, dtype=dtype))
 
-        **Parameters:**
-            key (str): The key to search for in the content.
-            content (str): The string content to parse.
-
-        **Returns:**
-            Union[str, None]: The extracted string value (without quotes) if found, otherwise None.
-        """
-        match = re.search(rf'{key}\s+"([^"]+)"', content)
-        if match:
-            return match.group(1)
-        return None
-    
-    @staticmethod
-    def parse_array(content: str, param_name: str, dtype: type) -> Union[List, None]:
-        """Parse values for a given parameter name with specified data type.
-
-        Handles multiplicity like 'param_name 1 2 1.0*3' or 'key 4 5 6.2*2'
-        and returns expanded list with elements converted to given dtype.
-        """
-        regex_pattern = rf"^{param_name}\s+([^\n]+)"
-        match = re.search(regex_pattern, content, re.MULTILINE)
-
-        if not match:
+        if not matrices:
             return None
 
-        tokens = match.group(1).replace(",", " ").split()
-        result = []
+        return matrices if all_matches else matrices[0]
 
-        for token in tokens:
-            if "*" in token:
-                parts = token.split("*")
-                if len(parts) == 2:
-                    # Switch order: the left side is the count and the right is the value.
-                    count_str, val = parts
-                    try:
-                        count = int(count_str)
-                    except ValueError:
-                        count = int(
-                            float(count_str)
-                        )  # Handle case where count may be a float
-                    result.extend([dtype(val)] * count)
-            else:
-                result.append(dtype(token))
+    @staticmethod
+    def parse_scalar(
+        content: str,
+        key: str,
+        dtype: type,
+        all_matches: bool = False
+    ) -> Union[type, List[type], None]:
+        """
+        Extract scalar value(s) following `key`.
 
-        return result
+        - Recognizes FORTRAN‑style exponents (d/D) and converts them to 'e' for Python.
+        - By default returns the first match as a single dtype.
+        - If all_matches=True, returns List[dtype], one element per occurrence.
+        - Returns None if no numeric match is found.
+        """
+        # Regex for a number with optional sign, decimal part, and e/D exponent
+        num_re = (
+            r"[+-]?"                 # optional sign
+            r"\d+(?:\.\d*)?"         # digits, optional fractional part
+            r"(?:[eEdD][+-]?\d+)?"   # optional exponent with e/E or d/D
+        )
 
+        # allow indent, then key, whitespace, then capture the number
+        pattern = rf"^\s*{re.escape(key)}\s+({num_re})"
+
+        # find all occurrences
+        raw_matches = [m.group(1) for m in re.finditer(pattern, content, flags=re.MULTILINE)]
+        if not raw_matches:
+            return None
+
+        # normalize and convert
+        converted: List[type] = []
+        for raw in raw_matches:
+            norm = raw.replace("d", "e").replace("D", "e")
+            try:
+                converted.append(dtype(norm))
+            except ValueError:
+                # skip anything that still fails conversion
+                pass
+
+        if not converted:
+            return None
+
+        return converted if all_matches else converted[0]
+
+    @staticmethod
+    def parse_string(
+        content: str,
+        key: str,
+        all_matches: bool = False
+    ) -> Union[str, List[str], None]:
+        """
+        Extract the double‑quoted string(s) following `key`.
+
+        By default returns the first match as a string.
+        If all_matches=True, returns a list of all matched strings.
+        Returns None if there are no matches.
+        """
+        # allow optional indent before the key, then key, whitespace, then "…"
+        pattern = rf'^\s*{re.escape(key)}\s+"([^"]+)"'
+        
+        # collect all matches
+        results: List[str] = [
+            m.group(1)
+            for m in re.finditer(pattern, content, flags=re.MULTILINE)
+        ]
+        
+        if not results:
+            return None
+        
+        return results if all_matches else results[0]
+    
+    def parse_array(
+        content: str,
+        param_name: str,
+        dtype: type,
+        all_matches: bool = False
+    ) -> Union[List, List[List], None]:
+        """
+        Parse the line(s) starting with `param_name`.
+
+        If dtype is int/float, only numeric tokens (and multiplicities) are captured.
+        If dtype is str, all tokens on the line are captured.
+
+        Multiplicity tokens look like "3*1.23" and expand to [1.23, 1.23, 1.23].
+
+        By default returns the first match as a List.
+        If all_matches=True, returns List[List] (one sublist per match).
+        Returns None if there are no matches.
+        """
+        # float‑literal regex with no capturing subgroups
+        float_re = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
+
+        if dtype is str:
+            # grab everything after param_name (incl. units)
+            pattern = rf'^\s*{param_name}\s+([^\n]+)'
+        else:
+            # grab only floats and multiplicity patterns
+            # but we don't enforce multiplicity in the regex; we'll handle it below
+            pattern = rf'^\s*{param_name}\s+(.+)'
+
+        # find all occurrences
+        results: List[List] = []
+        for m in re.finditer(pattern, content, flags=re.MULTILINE):
+            line = m.group(1).strip()
+            tokens = line.replace(",", " ").split()
+            row: List = []
+
+            for tok in tokens:
+                if dtype is str:
+                    # raw string mode
+                    row.append(tok)
+                else:
+                    # numeric mode: handle multiplicity tokens
+                    if "*" in tok:
+                        left, right = tok.split("*", 1)
+                        try:
+                            count = int(left)
+                        except ValueError:
+                            # maybe "1.0*val"—cast float to int
+                            count = int(float(left))
+                        # normalize any 'd' exponents
+                        val_str = right.replace("d", "e").replace("D", "e")
+                        try:
+                            val = dtype(val_str)
+                        except ValueError:
+                            continue
+                        row.extend([val] * count)
+                    else:
+                        # plain numeric token
+                        val_str = tok.replace("d", "e").replace("D", "e")
+                        try:
+                            row.append(dtype(val_str))
+                        except ValueError:
+                            continue
+
+            if row:
+                results.append(row)
+
+        if not results:
+            return None
+
+        return results if all_matches else results[0]

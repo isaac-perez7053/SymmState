@@ -4,6 +4,7 @@ from typing import Optional
 from symmstate.slurm.slurm_header import SlurmHeader
 import logging
 from symmstate._symm_state_core import SymmStateCore
+import os
 
 
 class SlurmFile:
