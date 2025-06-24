@@ -1,0 +1,16 @@
+ndtset 2
+chkprim 0
+kptopt 2
+
+# Set 1 : Ground State Self-Consistent Calculation
+#************************************************
+  kptopt1 1
+  tolvrs 1.0d-18
+
+# Set 2 : Calculation of ddk wavefunctions
+#************************************************
+  kptopt2 2
+  getwfk2 1
+  rfelfd2 2
+  iscf2   -3
+  tolwfr2 1.0D-18

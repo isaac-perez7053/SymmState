@@ -1,9 +1,7 @@
-import os
 import subprocess
 from pathlib import Path
 import click
 from symmstate.config.symm_state_settings import settings
-from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
 from symmstate.slurm import SlurmFile
 from symmstate.flpz.energy.energy_program import EnergyProgram
 from symmstate.flpz.electrotensor.electro_tensor_program import ElectroTensorProgram
@@ -18,6 +16,7 @@ from symmstate.abinit.abinit_file import AbinitFile
 import click
 import subprocess
 from symmstate.utils import DataParser, Documentation
+from symmstate.abinit import AbinitParser
 
 
 # Define the run_smodes function directly in this file to avoid circular imports.
@@ -81,6 +80,10 @@ def cli(ctx):
 )
 def pseudos(add, delete, list_pseudos):
     """Manage pseudopotential folder paths"""
+    from symmstate.pseudopotentials.pseudopotential_manager import (
+        PseudopotentialManager,
+    )
+
     if (add or delete) and list_pseudos:
         click.echo(
             "Error: Specify only one action at a time (either add, delete, or list)."
@@ -102,15 +105,49 @@ def pseudos(add, delete, list_pseudos):
             for name, full_path in pm.pseudo_registry.items():
                 click.echo(f"{name} -> {full_path}")
         else:
-            click.echo("No pseudopotentials found.")
+            click.echo("It's looking empty in here! No pseudopotentials found.")
     else:
         click.echo("Error: No action specified. Use --add, --delete, or --list.")
 
 
 @cli.command()
+@click.option(
+    "-l", "--list", is_flag=True, help="List all currently extracted variables"
+)
+@click.option("--abinit", is_flag=True, help="Extract variables from an Abinit file")
+@click.option(
+    "--peek",
+    "-p",
+    type=str,
+    help="Comma-separated list of variables to extract (e.g., --peek ecut,kptrlatt,acell)",
+)
+def variables(list, abinit, peek):
+    """List of currently extracted variables"""
+    if abinit is False:
+        click.echo("Error: Please specify which variables you want to list")
+
+    if list:
+        if abinit:
+
+            # List all Abinit variables
+            click.echo("All avaiable Abinit variables: \n")
+
+            # Use in build representation function to print all variables
+            click.echo(AbinitParser())
+
+    if peek:
+        peek_vars = [v.strip() for v in peek.split(",")]
+        for var in peek_vars:
+            click.echo(
+                f"{var}: {AbinitParser.is_supported(var)} - "
+                f"{AbinitParser.abinit_variable_descriptions().get(var, 'No description available')}"
+            )
+
+
+@cli.command()
 @click.option("--pp-dir", type=click.Path(), help="Set the pseudopotential directory")
 @click.option("--working-dir", type=click.Path(), help="Set the working directory")
-@click.option("--ecut", type=int, help="Set default energy cutoff (hartree)")
+@click.option("--ecut", type=int, help="Set default energy cutoff (Ha)")
 @click.option("--symm-prec", type=float, help="Set symmetry precision")
 @click.option("--project-root", type=float, help="Set project root directory")
 @click.option(
@@ -123,57 +160,62 @@ def pseudos(add, delete, list_pseudos):
     type=click.Path(),
     help="Set the path to the SMODES executable file",
 )
-def config(pp_dir, working_dir, ecut, symm_prec, project_root, test_dir, smodes_path):
+
+@click.option("--templates-dir", type=click.Path(), help="Set the templates directory")
+
+@click.option(
+    "--reset-pp-dir",
+    is_flag=True,
+    help="Reset the pseudopotentials directory to its default value",
+)
+
+@click.option("-l", "--list", is_flag=True, help="List current global settings")
+
+def config(pp_dir, working_dir, ecut, symm_prec, project_root, test_dir, smodes_path, templates_dir ,reset_pp_dir, list):
     """Manage global settings of the package"""
     updated = False
     if pp_dir:
         settings.PP_DIR = Path(pp_dir)
-        updated = True
+        click.echo(f"PP_DIR set to: {settings.PP_DIR}")
     if working_dir:
         settings.WORKING_DIR = Path(working_dir)
-        updated = True
+        click.echo(f"WORKING_DIR set to: {settings.WORKING_DIR}")
     if ecut:
         settings.DEFAULT_ECUT = ecut
-        updated = True
+        click.echo(f"DEFAULT_ECUT set to: {settings.DEFAULT_ECUT}")
     if symm_prec:
         settings.SYMM_PREC = symm_prec
-        updated = True
+        click.echo(f"SYMM_PREC set to: {settings.SYMM_PREC}")
     if project_root:
         settings.PROJECT_ROOT = project_root
-        updated = True
+        click.echo(f"PROJECT_ROOT set to: {settings.PROJECT_ROOT}")
     if test_dir:
         settings.TEST_DIR = (settings.WORKING_DIR / Path(test_dir)).resolve()
-        updated = True
+        click.echo(f"TEST_DIR set to: {settings.TEST_DIR}")
     if smodes_path:
         settings.SMODES_PATH = settings.WORKING_DIR / Path(smodes_path).resolve()
-        updated = True
+        click.echo(f"SMODES_PATH set to: {settings.SMODES_PATH}")
 
-    if updated:
-        settings.save_settings()  # Save the updated settings to file
-        click.echo("Settings updated:")
-        click.echo(f"SMODES_PATH:  {settings.SMODES_PATH}")
+    if reset_pp_dir:
+        settings.reset_pp_dir_to_default()
+        click.echo(f"PP_DIR reset to default: {settings.PP_DIR}")
+
+    if templates_dir:
+        settings.TEMPLATES_DIR = Path(templates_dir).resolve()
+        click.echo(f"TEMPLATES_DIR set to: {settings.TEMPLATES_DIR}")
+    
+    if list:
+        click.echo("Current global settings:")
         click.echo(f"PP_DIR: {settings.PP_DIR}")
+        click.echo(f"TEMPLATES_DIR: {settings.TEMPLATES_DIR}")
+        click.echo(f"SMODES_PATH: {settings.SMODES_PATH}")
         click.echo(f"WORKING_DIR: {settings.WORKING_DIR}")
+        click.echo(f"PROJECT_ROOT: {settings.PROJECT_ROOT}")
         click.echo(f"DEFAULT_ECUT: {settings.DEFAULT_ECUT}")
         click.echo(f"SYMM_PREC: {settings.SYMM_PREC}")
-        click.echo(f"PROJECT_ROOT: {settings.PROJECT_ROOT}")
         click.echo(f"TEST_DIR: {settings.TEST_DIR}")
     else:
         click.echo("No settings were updated.")
-
-
-@cli.command(name="show-config")
-def show_config():
-    """Display current global settings."""
-    settings_instance = settings
-    click.echo("Current Global Settings:")
-    click.echo(f"SMODES_PATH:  {settings_instance.SMODES_PATH}")
-    click.echo(f"PP_DIR: {settings_instance.PP_DIR}")
-    click.echo(f"WORKING_DIR: {settings_instance.WORKING_DIR}")
-    click.echo(f"DEFAULT_ECUT: {settings_instance.DEFAULT_ECUT}")
-    click.echo(f"SYMM_PREC: {settings_instance.SYMM_PREC}")
-    click.echo(f"PROJECT_ROOT: {settings_instance.PROJECT_ROOT}")
-    click.echo(f"TEST_DIR: {settings_instance.TEST_DIR}")
 
 
 @cli.command()
@@ -187,7 +229,22 @@ def show_config():
     type=click.Path(),
     help="Delete a template file path",
 )
-def templates(add, delete):
+@click.option("-l", "--list", is_flag=True, help="List current templates")
+@click.option("--special_list", is_flag=True, help="List special templates only")
+@click.option("--is_special", type=click.Path(), help="denote as a special template")
+@click.option(
+    "-r",
+    "--role",
+    type=str,
+    help="Role of the special template (e.g., 'piezo', 'flexo')",
+)
+@click.option(
+    "--delete_special", is_flag=True, help="Delete a special template by role"
+)
+@click.option("--unload", type=click.Path(), help="Unload a template file")
+def templates(
+    add, delete, list, special_list, is_special, role, delete_special, unload
+):
     """Manage templates"""
     from symmstate.templates.template_manager import TemplateManager
 
@@ -198,14 +255,57 @@ def templates(add, delete):
     tm = TemplateManager()
     if add:
         for path in add:
-            tm.create_template(path, os.path.basename(path))
+            tm.add_template(path)
         click.echo("Templates added.")
     elif delete:
         for path in delete:
-            tm.remove_template(os.path.basename(path))
+            tm.remove_template(path)
         click.echo("Templates deleted.")
+    elif list:
+        if tm.template_registry:
+            click.echo("Current templates:")
+            for name, full_path in tm.template_registry.items():
+                click.echo(f"{name} -> {full_path}")
+        else:
+            click.echo("It's looking empty in here! No templates found.")
+    elif special_list:
+        if tm.special_templates:
+            click.echo("Special templates:")
+            for name, full_path in tm.special_templates.items():
+                click.echo(f"{name} -> {full_path}")
+        else:
+            click.echo("It's looking empty in here! No templates found.")
+    elif is_special:
+        if role:
+            if tm.is_special_template(is_special):
+                click.echo(f"{is_special} is already special template.")
+            else:
+                tm.set_special_template(role, is_special)
+                click.echo(
+                    f"{is_special} has been set as a special template for the role of '{role}'."
+                )
+        else:
+            click.echo(
+                "Error: Please specify a role for the special template using --role."
+            )
+    elif delete_special:
+        if role:
+            tm.delete_special_template(role)
+            click.echo(f"Special template for role '{role}' has been deleted.")
+        else:
+            click.echo(
+                "Error: Please specify a role to delete the special template using --role."
+            )
+    elif unload:
+        if tm.template_exists(unload):
+            content = tm.unload_template(unload)
+            click.echo(f"Contents of {unload}:\n\n{content}\n")
+        else:
+            click.echo(f"Template '{unload}' not found.")
     else:
-        click.echo("Error: No action specified. Use --add or --delete.")
+        click.echo(
+            "Error: No action specified. Use --add, --delete, --list, or --special_list."
+        )
 
 
 @cli.command()
@@ -401,7 +501,7 @@ def electrotensor(
 @click.argument("irrep", type=str, required=False)
 def smodes(run, sym_basis, abi_file, smodes_input, irrep):
     """
-    Run SMODES using the provided SMODES input file or generate the symmetry adapted basis.
+    Run SMODES
 
     This command uses the global SMODES path from Settings.
     """
@@ -520,7 +620,7 @@ def test_all():
     "--results-file",
     type=click.Path(exists=True),
     required=True,
-    help="Path to the results file produced by a perturbation run",
+    help="Path to the results file",
 )
 @click.option(
     "--analysis-type",
@@ -537,7 +637,7 @@ def test_all():
     help="Threshold value for 'varying' analysis (optional)",
 )
 def data_analysis(results_file, analysis_type, save, filename, threshold):
-    """Perform data analysis on a results file produced by a perturbation run."""
+    """Perform data analysis on a results file"""
     amplitudes, energies, flexo_amps, flexo_tensors = load_flexo_data(results_file)
 
     if analysis_type == "energy":
@@ -575,7 +675,7 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
     "--results-file",
     type=click.Path(exists=True),
     required=True,
-    help="Path to the results file produced by a perturbation run",
+    help="Path to the results file produced",
 )
 @click.option(
     "--analysis-type",
@@ -592,7 +692,7 @@ def data_analysis(results_file, analysis_type, save, filename, threshold):
     help="Threshold value for 'varying' analysis (optional)",
 )
 def data_analysis(results_file, analysis_type, save, filename, threshold):
-    """Perform data analysis on a results file produced by a perturbation run."""
+    """Perform data analysis on a results file"""
     amplitudes, energies, flexo_amps, flexo_tensors = load_flexo_data(results_file)
 
     if analysis_type == "energy":
@@ -698,7 +798,7 @@ SLURM_FILE_DOC = docs.SLURM_FILE_DOC
     help="Show extended documentation for the SlurmFile class",
 )
 def examples(unit_cell, abinit_cell, abinit_file, slurm_file):
-    """Displays examples and extended documentation for the SymmState package."""
+    """Displays examples and extended documentation"""
     if unit_cell:
         click.echo(UNIT_CELL_DOC)
     elif abinit_cell:

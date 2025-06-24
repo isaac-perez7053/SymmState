@@ -1,13 +1,9 @@
-import os
-import ast
+import json
 from pathlib import Path
 import importlib.util
 
 
 def find_package_path(package_name: str = "symmstate") -> str:
-    """
-    Find and return the package path for the given package name using importlib.
-    """
     spec = importlib.util.find_spec(package_name)
     if spec is None or spec.submodule_search_locations is None:
         raise ImportError(f"Cannot find package {package_name}")
@@ -15,73 +11,70 @@ def find_package_path(package_name: str = "symmstate") -> str:
 
 
 class SymmStateSettings:
-    def __init__(self):
-        # Locate the package path and define the config folder within it.
-        pkg_path = find_package_path("symmstate")
-        config_dir = Path(pkg_path) / "config"
-        os.makedirs(config_dir, exist_ok=True)  # Ensure the config folder exists.
-        self.SETTINGS_FILE = config_dir / "settings.txt"
+    """Handles SymmState configuration settings"""
+    
+    SETTINGS_FILE = "settings.json"
+    DEFAULTS = {}
 
-        # If the settings file exists, load its values.
-        if self.SETTINGS_FILE.exists():
-            self.load_settings()
-        else:
-            self.set_defaults()
+    def __init__(self):
+        symmstate_path = find_package_path()
+        
+        self.DEFAULTS = {
+            "PP_DIR": str(Path(symmstate_path) / "pseudopotentials"),
+            "TEMPLATES_DIR": str(Path(symmstate_path) / "templates"),
+            "SMODES_PATH": "../isobyu/smodes",
+            "WORKING_DIR": ".",
+            "PROJECT_ROOT": "/home/user/myproject",
+            "DEFAULT_ECUT": 50,
+            "SYMM_PREC": 1e-5,
+            "TEST_DIR": "tests",
+        }
+
+        config_dir = Path(symmstate_path) / "config"
+        self.SETTINGS_FILE = config_dir / "settings.json"
+
+        self.load_settings()
+        # Create the file if it doesn't exist
+        if not self.SETTINGS_FILE.exists():
             self.save_settings()
 
-    def set_defaults(self):
-        # Path configurations
-        self.PP_DIR: Path = Path("pseudopotentials")
-        self.SMODES_PATH: Path = Path("../isobyu/smodes")
-        self.WORKING_DIR: Path = Path(".")
-        self.PROJECT_ROOT = "/home/user/myproject"  # or read from an env var
-
-        # Computational parameters
-        self.DEFAULT_ECUT: int = 50  # in Hartree
-        self.SYMM_PREC: float = 1e-5
-        self.TEST_DIR: Path = Path("tests")
-
     def load_settings(self):
-        # Define the expected types for each setting.
-        type_mapping = {
-            "PP_DIR": Path,
-            "SMODES_PATH": Path,
-            "WORKING_DIR": Path,
-            "DEFAULT_ECUT": int,
-            "SYMM_PREC": float,
-            "TEST_DIR": Path,
-            "PROJECT_ROOT": Path,
-        }
-        with open(self.SETTINGS_FILE, "r") as f:
-            for line in f:
-                if not line.strip() or ":" not in line:
-                    continue
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
-                if key in type_mapping:
-                    typ = type_mapping[key]
-                    if typ == Path:
-                        setattr(self, key, Path(value))
-                    elif typ == dict:
-                        setattr(self, key, ast.literal_eval(value))
-                    else:
-                        setattr(self, key, typ(value))
-        # For any missing keys, set default values.
-        for key in type_mapping:
-            if not hasattr(self, key):
-                self.set_defaults()
-                break
+        # Start with defaults
+        data = self.DEFAULTS.copy()
+        # If settings file exists, update with its values
+        if self.SETTINGS_FILE.exists():
+            with open(self.SETTINGS_FILE, "r") as f:
+                file_data = json.load(f)
+                data.update(file_data)
+        # Set attributes and ensure directories exist for paths
+        self.PP_DIR = Path(data["PP_DIR"]).resolve()
+        self.TEMPLATES_DIR = Path(data["TEMPLATES_DIR"]).resolve()
+        self.SMODES_PATH = data["SMODES_PATH"]
+        self.WORKING_DIR = data["WORKING_DIR"]
+        self.PROJECT_ROOT = data["PROJECT_ROOT"]
+        self.DEFAULT_ECUT = data["DEFAULT_ECUT"]
+        self.SYMM_PREC = data["SYMM_PREC"]
+        self.TEST_DIR = data["TEST_DIR"]
 
     def save_settings(self):
+        data = {
+            "PP_DIR": str(self.PP_DIR),
+            "TEMPLATES_DIR": str(self.TEMPLATES_DIR),
+            "SMODES_PATH": str(self.SMODES_PATH),
+            "WORKING_DIR": str(self.WORKING_DIR),
+            "DEFAULT_ECUT": self.DEFAULT_ECUT,
+            "SYMM_PREC": self.SYMM_PREC,
+            "TEST_DIR": str(self.TEST_DIR),
+            "PROJECT_ROOT": str(self.PROJECT_ROOT),
+        }
         with open(self.SETTINGS_FILE, "w") as f:
-            f.write(f"PP_DIR: {self.PP_DIR}\n")
-            f.write(f"SMODES_PATH: {self.SMODES_PATH}\n")
-            f.write(f"WORKING_DIR: {self.WORKING_DIR}\n")
-            f.write(f"DEFAULT_ECUT: {self.DEFAULT_ECUT}\n")
-            f.write(f"SYMM_PREC: {self.SYMM_PREC}\n")
-            f.write(f"TEST_DIR: {self.TEST_DIR}\n")
-            f.write(f"PROJECT_ROOT: {self.PROJECT_ROOT}\n")
+            json.dump(data, f, indent=2)
+
+    def reset_pp_dir_to_default(self):
+        """Reset the pseudopotentials directory setting to its default value."""
+        default_pp_dir = Path(self.DEFAULTS["PP_DIR"]).resolve()
+        self.PP_DIR = default_pp_dir
+        self.save_settings()
 
 
 # Create a single global instance to be used throughout the package.

@@ -27,11 +27,11 @@ class DataParser:
                 energy: float = float(total_energy_value)
             else:
                 (logger.info if logger is not None else print)(
-                    "Total energy not found.", logger=logger
+                    "Total energy not found."
                 )
         except FileNotFoundError:
             (logger.info if logger is not None else print)(
-                f"The file {abo_file} was not found.", logger=logger
+                f"The file {abo_file} was not found."
             )
         return energy
 
@@ -113,27 +113,23 @@ class DataParser:
                 f"The file {anaddb_file} was not found.", logger=logger
             )
         return piezo_tensor_clamped, piezo_tensor_relaxed
-    
 
     @staticmethod
     def parse_matrix(
-        content: str,
-        key: str,
-        dtype: type,
-        all_matches: bool = False
+        content: str, key: str, dtype: type, all_matches: bool = False
     ) -> Union[np.ndarray, List[np.ndarray], None]:
         """
         Extract one or more matrices that follow lines containing exactly `key`.
 
         A matrix is defined as the block of subsequent non-empty lines
         each starting with a digit or '-' (allowing negative numbers).
-        
+
         By default returns the first match as an np.ndarray.
         If all_matches=True, returns a list of np.ndarrays.
         Returns None if no matching key line or no data.
         """
         # Pattern to find lines that are exactly `key` (with optional indent)
-        key_pattern = re.compile(rf'^\s*{re.escape(key)}\s*$', flags=re.MULTILINE)
+        key_pattern = re.compile(rf"^\s*{re.escape(key)}\s*$", flags=re.MULTILINE)
         lines = content.splitlines()
 
         matrices: List[np.ndarray] = []
@@ -145,7 +141,7 @@ class DataParser:
             # collect following lines that start with digit or '-'
             for ln in lines[start_line + 1 :]:
                 stripped = ln.strip()
-                if not stripped or not re.match(r'^[-\d]', stripped):
+                if not stripped or not re.match(r"^[-\d]", stripped):
                     break
                 # convert each token in that row
                 row = [dtype(tok) for tok in stripped.split()]
@@ -160,10 +156,7 @@ class DataParser:
 
     @staticmethod
     def parse_scalar(
-        content: str,
-        key: str,
-        dtype: type,
-        all_matches: bool = False
+        content: str, key: str, dtype: type, all_matches: bool = False
     ) -> Union[type, List[type], None]:
         """
         Extract scalar value(s) following `key`.
@@ -175,16 +168,18 @@ class DataParser:
         """
         # Regex for a number with optional sign, decimal part, and e/D exponent
         num_re = (
-            r"[+-]?"                 # optional sign
-            r"\d+(?:\.\d*)?"         # digits, optional fractional part
-            r"(?:[eEdD][+-]?\d+)?"   # optional exponent with e/E or d/D
+            r"[+-]?"  # optional sign
+            r"\d+(?:\.\d*)?"  # digits, optional fractional part
+            r"(?:[eEdD][+-]?\d+)?"  # optional exponent with e/E or d/D
         )
 
         # allow indent, then key, whitespace, then capture the number
         pattern = rf"^\s*{re.escape(key)}\s+({num_re})"
 
         # find all occurrences
-        raw_matches = [m.group(1) for m in re.finditer(pattern, content, flags=re.MULTILINE)]
+        raw_matches = [
+            m.group(1) for m in re.finditer(pattern, content, flags=re.MULTILINE)
+        ]
         if not raw_matches:
             return None
 
@@ -205,9 +200,7 @@ class DataParser:
 
     @staticmethod
     def parse_string(
-        content: str,
-        key: str,
-        all_matches: bool = False
+        content: str, key: str, all_matches: bool = False
     ) -> Union[str, List[str], None]:
         """
         Extract the double‑quoted string(s) following `key`.
@@ -218,23 +211,19 @@ class DataParser:
         """
         # allow optional indent before the key, then key, whitespace, then "…"
         pattern = rf'^\s*{re.escape(key)}\s+"([^"]+)"'
-        
+
         # collect all matches
         results: List[str] = [
-            m.group(1)
-            for m in re.finditer(pattern, content, flags=re.MULTILINE)
+            m.group(1) for m in re.finditer(pattern, content, flags=re.MULTILINE)
         ]
-        
+
         if not results:
             return None
-        
+
         return results if all_matches else results[0]
-    
+
     def parse_array(
-        content: str,
-        param_name: str,
-        dtype: type,
-        all_matches: bool = False
+        content: str, param_name: str, dtype: type, all_matches: bool = False
     ) -> Union[List, List[List], None]:
         """
         Parse the line(s) starting with `param_name`.
@@ -249,15 +238,15 @@ class DataParser:
         Returns None if there are no matches.
         """
         # float‑literal regex with no capturing subgroups
-        float_re = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
+        float_re = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
 
         if dtype is str:
             # grab everything after param_name (incl. units)
-            pattern = rf'^\s*{param_name}\s+([^\n]+)'
+            pattern = rf"^\s*{param_name}\s+([^\n]+)"
         else:
             # grab only floats and multiplicity patterns
             # but we don't enforce multiplicity in the regex; we'll handle it below
-            pattern = rf'^\s*{param_name}\s+(.+)'
+            pattern = rf"^\s*{param_name}\s+(.+)"
 
         # find all occurrences
         results: List[List] = []

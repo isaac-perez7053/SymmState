@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the following metadata."
 title: "SymmState: A Solid-State Physics Package for Symmetry-Based Calculations"
-version: "0.9.3"
+version: "0.9.5"
 authors:
   - family-names: Perez
     given-names: Isaac

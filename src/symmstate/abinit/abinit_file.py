@@ -3,6 +3,7 @@ import os
 import subprocess
 import copy
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
+from symmstate.templates.template_manager import TemplateManager
 from typing import Optional, List
 from symmstate.slurm import *
 from pymatgen.core import Structure
@@ -157,7 +158,7 @@ class AbinitFile(AbinitUnitCell):
             )
             outf.write(f"nshiftk {self.vars.get('nshiftk', '1')} \n")
             if self.vars.get("kptrlatt") is not None:
-                outf.write("kptrlatt")
+                outf.write("kptrlatt \n")
                 for row in self.vars.get("kptrlatt"):
                     outf.write(f"  {' '.join(map(str, row))} \n")
             elif self.vars.get("ngkpt") is not None:
@@ -288,23 +289,7 @@ class AbinitFile(AbinitUnitCell):
         Returns:
             str: The unique base name of the output file used for the piezoelectric calculation.
         """
-        content: str = """ndtset 2
-chkprim 0
-kptopt 2
-
-# Set 1 : Ground State Self-Consistent Calculation
-#************************************************
-  kptopt1 1
-  tolvrs 1.0d-18
-
-# Set 2 : Calculation of ddk wavefunctions
-#************************************************
-  kptopt2 2
-  getwfk2 1
-  rfelfd2 2
-  iscf2   -3
-  tolwfr2 1.0D-18
-"""
+        content: str = TemplateManager().unload_special_template("_piezoelectric_script")
         working_directory: str = os.getcwd()
         output_name = f"{self.file_name}_piezo.abi"
         output_name = self._get_unique_filename(output_name)
@@ -351,45 +336,7 @@ kptopt 2
 
         """
 
-        content: str = """ndtset 5
-chkprim 0
-kptopt 2
-
-# Set 1: Ground State Self-Consistency
-#*************************************
-getwfk1 0
-kptopt1 1
-tolvrs1 1.0d-18
-
-# Set 2: Response function calculation of d/dk wave function
-#**********************************************************
-iscf2 -3
-rfelfd2 2
-tolwfr2 1.0d-20
-
-# Set 3: Response function calculation of d2/dkdk wavefunction
-#*************************************************************
-getddk3 2
-iscf3 -3
-rf2_dkdk3 3
-tolwfr3 1.0d-16
-rf2_pert1_dir3 1 1 1
-rf2_pert2_dir3 1 1 1
-
-# Set 4: Response function calculation to q=0 phonons, electric field and strain
-#*******************************************************************************
-getddk4 2
-rfelfd4 3
-rfphon4 1
-rfstrs4 3
-rfstrs_ref4 1
-tolvrs4 1.0d-8
-prepalw4 1
-
-getwfk 1
-useylm 1
-kptopt2 2
-"""
+        content: str = TemplateManager().unload_special_template("_flexoelectric_script")
         working_directory: str = os.getcwd()
         output_name = f"{self.file_name}_flexo.abi"
         output_name = self._get_unique_filename(output_name)
@@ -434,22 +381,9 @@ kptopt2 2
             str: The base name of the generated output file.
         """
 
-        content: str = """ndtset 1
-chkprim 0
+        # Grab template for energy calculation
+        content: str = TemplateManager().unload_special_template("_energy_script")
 
-# Ground State Self-Consistency
-#*******************************
-getwfk1 0
-kptopt1 1
-
-# Turn off various file outputs
-prtpot 0
-prteig 0
-
-getwfk 1
-useylm 1
-kptopt2 2
-    """
         working_directory: str = os.getcwd()
         output_name = f"{self.file_name}_energy.abi"
         output_name = self._get_unique_filename(output_name)

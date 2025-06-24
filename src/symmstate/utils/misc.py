@@ -1,5 +1,4 @@
-from pymatgen.core.periodic_table import Element
-from pymatgen.core import Structure, Lattice, Element
+from pymatgen.core import Structure
 
 
 class Misc:
@@ -154,4 +153,7 @@ class Misc:
 
         nband = total_valence
         # Figure out why I have to add this 4
+
+        # In the future, nband = nelectron / 2 + nion / 2 + 2
+
         return nband + 4

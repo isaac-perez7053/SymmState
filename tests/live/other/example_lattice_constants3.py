@@ -1,6 +1,6 @@
 """
-In short, this test file will submit 12 self-consistent runs that converge the lattice parameters
-with respect to different uniform grids and different shiftks
+In short, this test file will submit 4 self-consistent runs that converge the lattice parameters
+with respect to different uniform grids
 """
 
 from symmstate.abinit import AbinitFile
@@ -94,98 +94,79 @@ abinit_file = AbinitFile("test_file.abi")
 
 
 # Storing the list of ngkpt and shiftk I will be testing over
-all_output_files = []
-shiftk_list = [[0.5, 0.5, 0.5], [0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]]
-ngkpt_list = [[2, 2, 2], [4, 4, 4], [6, 6, 6], [8, 8, 8]]
+output_files = []
+lattice_constants = []
+ecuts = [20, 25, 30, 35, 40, 45, 50, 55]
 content = f"""
-    Chksymbreak 0
-    #Definition of occupation numbers
-    occopt 4
-    tsmear 0.05
+Chksymbreak 0
+#Definition of occupation numbers
+occopt 4
+tsmear 0.05
 
-    #Optimization of the lattice parameters
-    optcell 1
-    ionmov  2
-    ntime  10
-    dilatmx 1.05
-    """
+#Optimization of the lattice parameters
+optcell 1
+ionmov  2
+ntime  10
+dilatmx 1.05
+"""
 
-# Choose number of processors you want to use
-slurm_obj.num_processors = 12
-for idx, shiftk in enumerate(shiftk_list):
-    # Choose a single shiftk
-    abinit_file.vars["shiftk"] = shiftk
-    output_files = []
-    for i in range(0, 4):
-        abinit_file.vars["ngkpt"] = ngkpt_list[i]
+slurm_obj.num_processors = 8
+for i in range(0, 8):
+    # Submit 4 scripts, each with different shiftk and nshiftk
+    # Write custom abinit file with ngkpt set
+    abinit_file.vars["ecut"] = ecuts[i]
 
-        # 4. Write abinit file and run the job
-        output_abi = abinit_file.write_custom_abifile(
-            f"lattice_convergence_{i}_{idx}.abi", content, coords_are_cartesian=False
+    # 4. Write abinit file and run the job
+    output_abi = abinit_file.write_custom_abifile(
+        f"lattice_convergence_{i}.abi", content, coords_are_cartesian=False
+    )
+    output_files.append(
+        abinit_file.run_abinit(
+            input_file=output_abi, slurm_obj=slurm_obj, log_file=f"convergence_{i}.log"
         )
-        output_files.append(
-            abinit_file.run_abinit(
-                input_file=output_abi,
-                slurm_obj=slurm_obj,
-                log_file=f"convergence_{i}.log",
-            )
-        )
-    # Append all abinit output files for shiftk into an array
-    all_output_files.append(output_files)
+    )
 
 # -------------------------OPTIONAL----------------------------------#
 
 # Once all jobs are submitted, wait for all of them to finish
 slurm_obj.wait_for_jobs_to_finish(check_time=60)
 
-
 # 5. Extract the second acell from each output file
-all_lattice_constants = []
-for output_files_list in all_output_files:
-    # Choose a single shiftk list
-    for output_file in output_files_list:
-        lattice_constants = []
-        with open(f"{output_file}.abo") as f:
-            content = f.read()
+lattice_constants = []
+for output_file in output_files:
+    with open(f"{output_file}.abo") as f:
+        content = f.read()
 
-        # Extract all instances of the acell keyword in the abo file
-        acells = DataParser.parse_array(content, "acell", float, all_matches=True) or []
+    acells = DataParser.parse_array(content, "acell", float, all_matches=True) or []
+    if len(acells) < 2:
+        raise ValueError(f"{output_file}.abo has only {len(acells)} acell values")
+    lattice_constants.append(acells[1])
 
-        if len(acells) < 2:
-            raise ValueError(f"{output_file}.abo has only {len(acells)} acell values")
-
-        # Choose the last acell in the file (the converged acell)
-        lattice_constants.append(acells[1])
-
-    # Optional: convert to NumPy array for downstream functions
-    lattice_array = np.array(lattice_constants)  # shape (n_runs,)
-    all_lattice_constants.append(lattice_array)
-
+# Optional: convert to NumPy array for downstream functions
+lattice_array = np.array(lattice_constants)  # shape (n_runs,)
 
 # Print convergence info
+print(lattice_array)
 print(convergence_lol(lattice_array))
 
 # 6. Plot the results on a single plot
 fig, ax = plt.subplots(figsize=(8, 5))
-grid = [2, 4, 6, 8]
-for idx, lattice_array in enumerate(all_lattice_constants):
-    for i in range(0, 3):
-        ax.plot(
-            grid,
-            [latconst[i] for latconst in lattice_array],
-            marker="o",
-            markersize=8,
-            linewidth=1.5,
-            label=f"shiftk {shiftk_list[idx]}",
-        )
+for i in range(0, 3):
+    ax.plot(
+        ecuts,
+        [latconst[i] for latconst in lattice_constants],
+        marker="o",
+        markersize=8,
+        linewidth=1.5,
+    )
 ax.set(
-    xlabel="ngkpt",
+    xlabel="ecut (Ha)",
     ylabel="lattice constant (Bohr)",
-    title="ngkpt vs. lattice constants",
+    title="ecut vs. lattice constants",
 )
 ax.grid(True, alpha=0.3)
 ax.legend()
 
 # Save the plot with a specified DPI and tight layout
-fig.savefig("lattice_convergence2.png", dpi=300, bbox_inches="tight")
+fig.savefig("ecut_vs_latconst.png", dpi=300, bbox_inches="tight")
 plt.show()

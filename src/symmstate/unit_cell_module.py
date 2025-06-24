@@ -115,7 +115,7 @@ class UnitCell(SymmStateCore):
     def find_space_group(self):
         """Calculate and return the space group of the unit cell."""
         analyzer = SpacegroupAnalyzer(self.structure)
-        return (analyzer.get_space_group_number(), analyzer.get_space_group_symbol())
+        return analyzer.get_space_group_number(), analyzer.get_space_group_symbol()
 
     def perturbations(self, perturbation, coords_are_cartesian=False):
         """

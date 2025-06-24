@@ -97,14 +97,8 @@ abinit_file = AbinitFile("test_file.abi")
 output_files = []
 lattice_constants = []
 ngkpt_list = [[2, 2, 2], [4, 4, 4], [6, 6, 6], [8, 8, 8]]
-
-slurm_obj.num_processors = 8
-for i in range(0, 3):
-    # Submit 4 scripts, each with different shiftk and nshiftk
-    # Write custom abinit file with ngkpt set
-    abinit_file.vars["ngkpt"] = ngkpt_list[i]
-    content = f"""
-Chksymbreak 0
+content = f"""
+chksymbreak 0
 #Definition of occupation numbers
 occopt 4
 tsmear 0.05
@@ -115,6 +109,13 @@ ionmov  2
 ntime  10
 dilatmx 1.05
 """
+
+slurm_obj.num_processors = 8
+for i in range(0, 4):
+    # Submit 4 scripts, each with different shiftk and nshiftk
+    # Write custom abinit file with ngkpt set
+    abinit_file.vars["ngkpt"] = ngkpt_list[i]
+
     # 4. Write abinit file and run the job
     output_abi = abinit_file.write_custom_abifile(
         f"lattice_convergence_{i}.abi", content, coords_are_cartesian=False
@@ -145,12 +146,13 @@ for output_file in output_files:
 lattice_array = np.array(lattice_constants)  # shape (n_runs,)
 
 # Print convergence info
+print(lattice_array)
 print(convergence_lol(lattice_array))
 
 # 6. Plot the results on a single plot
 fig, ax = plt.subplots(figsize=(8, 5))
 grid = [2, 4, 6, 8][: len(lattice_constants)]
-for i in range(0, 2):
+for i in range(0, 3):
     ax.plot(
         grid,
         [latconst[i] for latconst in lattice_constants],

@@ -48,8 +48,24 @@ class AbinitParser:
             "shiftk": DataParser.parse_array(content, "shiftk", float),
             "nstep": DataParser.parse_scalar(content, "nstep", int),
             "useylm": DataParser.parse_scalar(content, "useylm", int),
-            "ngkpt": DataParser.parse_array(content, "ngkpt", float)
+            "ngkpt": DataParser.parse_array(content, "ngkpt", float),
         }
+
+        # Check if all required keys are present
+        required_keys = [
+            "acell",
+            coord_type,
+            "znucl",
+            "typat",
+            "ecut",
+            "ixc",
+            "pseudos",
+            "natom",
+            "ntypat",
+        ]
+        for key in required_keys:
+            if key not in parsed_data or parsed_data[key] is None:
+                raise ValueError(f"Missing required variable: {key}")
 
         # Determine the type of convergence criteria used
         init_methods = [
@@ -72,7 +88,47 @@ class AbinitParser:
             raise ValueError("Please specify a convergence criteria")
         parsed_data["conv_criteria"] = conv_criteria
 
-        # Remove None values
-        return {k: v for k, v in parsed_data.items() if v is not None}
+        return {k: v for k, v in parsed_data.items()}
 
+    @staticmethod
+    def abinit_variable_descriptions():
+        """Print descriptions of all Abinit variables currently supported"""
+        return {
+            "acell": "Lattice vectors in Angstrom (Tuple[float, float, float])",
+            "rprim": "Primitive lattice vectors in Angstrom (Matrix[3, 3])",
+            "xcart": "Cartesian coordinates of atoms in Angstrom (Matrix[natom, 3])",
+            "xred": "Reduced coordinates of atoms (Matrix[natom, 3])",
+            "znucl": "Nuclear charges of atoms (arr[ntypat])",
+            "typat": "Type of each atom (arr[natom])",
+            "ecut": "Plane-wave cutoff energy in Hartree (float)",
+            "ecutsm": "Smearing energy for Fermi-Dirac smearing (float)",
+            "nshiftk": "Number of k-point shifts (Tuple[float, float, float])",
+            "nband": "Number of bands (int)",
+            "diemac": "Macroscopic dielectric constant (float)",
+            "toldfe": "Energy convergence criterion (float)",
+            "tolvrs": "Residual convergence criterion (float)",
+            "tolsym": "Symmetry convergence criterion (float)",
+            "ixc": "Exchange-correlation functional index (int)",
+            "kptrlatt": "K-point lattice vectors (Matrix)",
+            "pp_dirpath": "Path to pseudopotential directory (str)",
+            "pseudos": "List of pseudopotentials for each atom type (arr[str] * ntypat)",
+            "natom": "Total number of atoms in the structure (int)",
+            "ntypat": "Number of different atom types (int)",
+            "kptopt": "K-point generation option (int)",
+            "chkprim": "Check primitive cell option (0 or 1) (int)",
+            "shiftk": "K-point shifts for symmetry operations (Tuple[float, float, float])",
+            "nstep": "Number of steps for the calculation (int)",
+            "useylm": "'1' to use spherical harmonics, '0' otherwise (int)",
+            "ngkpt": "'ngkpt' is a list of integers defining the number of k-points (in the x, y, z directions) in the reciprocal space grid. (arr[int, int, int])",
+        }
 
+    @staticmethod
+    def is_supported(key: str) -> bool:
+        """Check if a variable is supported by the parser"""
+        return key in AbinitParser.abinit_variable_descriptions()
+
+    def __str__(self):
+        return "\n".join(
+            f"{name}: {desc}"
+            for name, desc in AbinitParser.abinit_variable_descriptions().items()
+        )

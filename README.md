@@ -16,7 +16,7 @@ To install the SymmState package, follow these steps:
 
 1. Install the package using pip:
     ```bash
-    pip install symmstate==0.9.2
+    pip install symmstate==0.9.5
     ```
 3. Download Abinit [here](https://abinit.github.io/abinit_web/) and follow their installation instructions
 4. For symmetry-related functionality, download smodes [here](https://iso.byu.edu/iso/isolinux.php)

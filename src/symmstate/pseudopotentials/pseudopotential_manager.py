@@ -1,25 +1,26 @@
+# This file is part of the SymmState package.
+# This file serves as a manager for pseudopotentials used in the SymmState package.
+# It allows for loading, adding, retrieving, and deleting pseudopotentials from a specified folder.
 import os
 from typing import Dict
-import argparse
 import logging
 from symmstate import SymmStateCore
 from symmstate.utils import Logger
+from symmstate.config.symm_state_settings import SymmStateSettings
 
 
 class PseudopotentialManager(SymmStateCore):
-    def __init__(self, folder_path: str = None, *, logger=None):
+    def __init__(self, *, logger=None):
         """
         This class will initialize automatically when running SymmState
         """
-        # Calculate the path to the pseudopotential folder in the SymmState package
-        if folder_path is None:
-            symmstate_path = self.find_package_path()
-            self.folder_path = f"{symmstate_path}/pseudopotentials"
-        else:
-            self.folder_path = folder_path
+        # Calculate the path to the pseudopotential folder in the SymmState packag
+        self.folder_path = str(SymmStateSettings().PP_DIR.resolve())
 
+        # TODO: Possibly fix the logger to use the global logger
         self.logger = logger
 
+        self.pseudo_registry = {}
         self.pseudo_registry: Dict[str, str] = self._load_pseudopotentials()
 
     def _load_pseudopotentials(self) -> Dict[str, str]:
@@ -79,42 +80,3 @@ class PseudopotentialManager(SymmStateCore):
                 logger=self.logger,
                 level=logging.ERROR,
             )
-
-
-def main():
-    manager = PseudopotentialManager()
-
-    # Create the argument parser
-    parser = argparse.ArgumentParser(description="Manage pseudopotentials")
-    # Define mutually exclusive operations: add, delete, and list.
-    action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--add", "-a", nargs="+", help="Add pseudopotentials")
-    action_group.add_argument(
-        "--delete", "-d", nargs="+", help="Delete pseudopotentials"
-    )
-    action_group.add_argument(
-        "--list", "-l", action="store_true", help="List current pseudopotentials"
-    )
-
-    # Parse the arguments
-    args = parser.parse_args()
-
-    if args.add:
-        print("Adding pseudopotentials:")
-        for pseudo_file in args.add:
-            manager.add_pseudopotential(pseudo_file)
-    elif args.delete:
-        print("Deleting pseudopotentials:")
-        for pseudo_file in args.delete:
-            manager.delete_pseudopotential(pseudo_file)
-    elif args.list:
-        if manager.pseudo_registry:
-            print("Current pseudopotentials:")
-            for name, path in manager.pseudo_registry.items():
-                print(f"{name} -> {path}")
-        else:
-            print("No pseudopotentials found.")
-
-
-if __name__ == "__main__":
-    main()

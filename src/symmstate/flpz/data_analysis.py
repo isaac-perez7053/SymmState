@@ -202,7 +202,7 @@ def plot_varying_components(
 # Usage example
 if __name__ == "__main__":
     # Load data
-    filename = "../../results2025RitzLab/catio3_Pm3m/GM4-/catio3_GM4-_9.txt"
+    filename = "../../../tests/misc/symmstate.log"
     amps, energies, flexo_amps, flexo_tensors = load_flexo_data(filename)
 
     # Create individual plots

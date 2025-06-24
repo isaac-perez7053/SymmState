@@ -1,0 +1,5 @@
+{
+  "_energy_script": "my_energy_template.abi",
+  "_piezoelectric_script": "my_piezoelectric_template.abi",
+  "_flexoelectric_script": "my_flexoelectric_template.abi"
+}

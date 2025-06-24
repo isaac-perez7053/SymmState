@@ -1,0 +1,15 @@
+ndtset 1
+chkprim 0
+
+# Ground State Self-Consistency
+#*******************************
+getwfk1 0
+kptopt1 1
+
+# Turn off various file outputs
+prtpot 0
+prteig 0
+
+getwfk 1
+useylm 1
+kptopt2 

@@ -252,21 +252,29 @@ class SlurmFile:
             check_once (bool): If True, perform only a single check instead of continuous polling.
         """
         (self._logger.info if self._logger is not None else print)(
-            f"Monitoring {len(self.running_jobs)} jobs..."
+            f"Monitoring {len(self.running_jobs)} jobs...\n"
         )
         try:
             if check_once:
                 time.sleep(check_time)
                 self.all_jobs_finished()
             else:
-                while True:
-                    if self.all_jobs_finished():
-                        break
-                    (self._logger.info if self._logger is not None else print)(
-                        f"Jobs remaining: {len(self.running_jobs)} - next check in {check_time}s"
-                    )
+                total_time = 0
+                while not self.all_jobs_finished():
+                    msg = f"Jobs remaining: {len(self.running_jobs)} - waited for {total_time/60:.2f} minutes"
+                    print(f"\r{msg}", end="", flush=True)
                     time.sleep(check_time)
+                    total_time += check_time
+
+                final_msg = f"All jobs finished after {total_time/60:.3f} minutes."
+                print()  # Move to next line in terminal
+                if self._logger is not None:
+                    self._logger.info(final_msg)
+                else:
+                    print(final_msg)
+
         except KeyboardInterrupt:
+            # TODO: Cancel all running jobs if interrupted
             (self._logger.info if self._logger is not None else print)(
                 "\nJob monitoring interrupted by user!"
             )

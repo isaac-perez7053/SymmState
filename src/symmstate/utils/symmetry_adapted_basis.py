@@ -42,7 +42,7 @@ class SymmAdaptedBasis:
         # Parse lattice parameters
         prec_lat_param = [float(x) for x in s_lines[0].split()]
 
-        print(f"Precision Lattice Parameters:\n {prec_lat_param}\n ")
+        print(f"Precision Lattice Parameters:\n {np.array2string(prec_lat_param, precision=6, suppress_small=True)}\n ")
         acell = [1, 1, 1]
 
         # Execute SMODES and process output
@@ -173,7 +173,7 @@ class SymmAdaptedBasis:
         atom_positions = SymmAdaptedBasis._clean_positions(
             atom_positions_raw, prec_lat_param, clean_list, symm_prec=symm_prec
         )
-        print(f"Smodes Unit Cell Coordinates:\n {atom_positions} \n")
+        print(f"Smodes Unit Cell Coordinates:\n {np.array2string(atom_positions, precision=6, suppress_small=True)} \n")
         coordinates = atom_positions
         pos_mat_cart = coordinates.copy()
 

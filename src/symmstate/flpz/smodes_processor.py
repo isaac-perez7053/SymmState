@@ -1,8 +1,6 @@
 import numpy as np
 import subprocess
-import sys
 from pathlib import Path
-from scipy.sparse.linalg import cg
 import warnings
 from symmstate.abinit import AbinitFile
 from symmstate.flpz import FlpzCore
@@ -96,7 +94,7 @@ class SmodesProcessor(FlpzCore):
         Creates the displaced cells and runs them through Abinit for calculations.
         Job submissions are handled by the provided slurm_obj.
         """
-        content = "useylm 1\nkptopt 2\nchkprim 0\n"
+        content = "useylm 1\nkptopt 2\nchkprim 0\n chksymtnons 0\n "
         original_coords = self.abinit_file.grab_reduced_coordinates()
         abi_name = "dist_0"
         self.abinit_file.write_custom_abifile(
@@ -114,13 +112,13 @@ class SmodesProcessor(FlpzCore):
         for i in range(self.num_sam):
             j = i + 1
             self._logger.info(
-                f"Printing number of symmetry adapted modes: {self.num_sam} \n"
+                f"Printing number of symmetry adapted modes:\n {np.array2string(self.num_sam, precision=6, suppress_small=True)} \n"
             )
             perturbation = np.array(
                 self.abinit_file.grab_cartesian_coordinates()
                 + (1.88973 * self.disp_mag * self.dist_mat[i])
             )
-            self._logger.info(f"Printing perturbation: \n {perturbation} \n")
+            self._logger.info(f"Printing perturbation: \n {np.array2string(perturbation, precision=6, suppress_small=True)} \n")
             self.abinit_file.change_coordinates(
                 new_coordinates=perturbation, coords_are_cartesian=True
             )
@@ -178,7 +176,7 @@ class SmodesProcessor(FlpzCore):
                 force_mat_raw[sam, atom_ind, 2] = float(words[3])
                 atom_ind += 1
 
-        self._logger.info(f"Force matrix raw:\n{force_mat_raw} \n")
+        self._logger.info(f"Force matrix raw:\n{np.array2string(force_mat_raw, precision=6, suppress_small=True)} \n")
 
         force_list = np.zeros(
             (self.num_sam, self.abinit_file.vars["natom"], 3), dtype=np.float64
@@ -190,7 +188,7 @@ class SmodesProcessor(FlpzCore):
                         force_mat_raw[sam + 1, i, j] - force_mat_raw[0, i, j]
                     )
 
-        self._logger.info(f"Force list:\n{force_list} \n")
+        self._logger.info(f"Force list:\n{np.array2string(force_list, precision=6, suppress_small=True)} \n")
 
         force_matrix = np.tensordot(
             force_list, self.dist_mat.astype(np.float64), axes=([1, 2], [1, 2])
@@ -206,16 +204,16 @@ class SmodesProcessor(FlpzCore):
                     mass_vector[m] = this_mass
             if this_mass == 0:
                 raise ValueError("Problem with building mass matrix. Quitting...")
-        self._logger.info(f"Mass Vector:\n{mass_vector} \n")
+        self._logger.info(f"Mass Vector:\n{np.array2string(mass_vector, precision=6, suppress_small=True)} \n")
 
         sqrt_mass_vector = np.sqrt(mass_vector)
         mass_matrix = np.outer(sqrt_mass_vector, sqrt_mass_vector)
-        self._logger.info(f"Mass Matrix:\n{mass_matrix}\n")
+        self._logger.info(f"Mass Matrix:\n{np.array2string(mass_matrix, precision=6, suppress_small=True)}\n")
 
         fc_mat = (-force_matrix / self.disp_mag).astype(np.float64)
         fc_mat = (fc_mat + fc_mat.T) / 2.0
         self.springs_constants_matrix = fc_mat
-        self._logger.info(f"Force Constants Matrix:\n{fc_mat} \n")
+        self._logger.info(f"Force Constants Matrix:\n{np.array2string(fc_mat, precision=6, suppress_small=True)} \n")
 
         cond_number = np.linalg.cond(fc_mat)
         self._logger.info(
@@ -228,7 +226,7 @@ class SmodesProcessor(FlpzCore):
 
         dyn_mat = np.divide(fc_mat, mass_matrix)
         self.dyn_mat = dyn_mat
-        self._logger.info(f"Dynamical Matrix:\n{dyn_mat} \n")
+        self._logger.info(f"Dynamical Matrix:\n{np.array2string(dyn_mat, precision=6, suppress_small=True)} \n")
 
         cond_number = np.linalg.cond(dyn_mat)
         self._logger.info(f"Condition number of the dynamical matrix: {cond_number}")
@@ -236,10 +234,10 @@ class SmodesProcessor(FlpzCore):
             warnings.warn("High numerical instability in dynamical matrix.")
 
         dynevals, dynevecs_sam = np.linalg.eig(dyn_mat)
-        self._logger.info(f"dynevecs_sam:\n{dynevecs_sam} \n")
-        self._logger.info(f"dynevals:\n{dynevals} \n")
-        self._logger.info(f"Eigenvalues: {dynevals}")
-        self._logger.info(f"Absolute eigenvalues: {np.abs(dynevals)}")
+        self._logger.info(f"dynevecs_sam: {np.array2string(dynevecs_sam, precision=6, suppress_small=True)}\n")
+        self._logger.info(f"dynevals: {np.array2string(dynevals, precision=6, suppress_small=True)}\n")
+        self._logger.info(f"Eigenvalues: {dynevals}\n")
+        self._logger.info(f"Absolute eigenvalues: {np.abs(dynevals)}\n")
 
         eV_to_J = 1.602177e-19
         ang_to_m = 1.0e-10
@@ -252,12 +250,12 @@ class SmodesProcessor(FlpzCore):
             * 1.0e-12
         )
         fc_eval = np.sign(fc_evals) * np.sqrt(np.abs(fc_evals))
-        self._logger.info(f"Frequency in THz:\n{freq_thz}")
+        self._logger.info(f"Frequency in THz: {freq_thz}\n")
         idx_dyn = np.flip(np.argsort(freq_thz)[::-1])
         freq_thz = freq_thz[idx_dyn] / (2 * np.pi)
         dynevecs_sam = dynevecs_sam[:, idx_dyn]
         freq_cm = freq_thz * 1.0e12 / c
-        self._logger.info(f"Frequency in wavenumbers: {freq_cm}")
+        self._logger.info(f"Frequency in wavenumbers: {freq_cm}\n")
         self.freq_cm = freq_cm
 
         self.dyn_freqs = [[freq_thz[i], freq_cm[i]] for i in range(self.num_sam)]
@@ -295,40 +293,19 @@ class SmodesProcessor(FlpzCore):
 
         self.phonon_vecs = phon_disp_eigs.astype(np.float64)
         self.red_mass = redmass_vec.astype(np.float64)
-        self._logger.info(f"Reduced mass vector:\n{self.red_mass} \n")
+        self._logger.info(f"Reduced mass vector:\n{np.array2string(self.red_mass, precision=6, suppress_small=True)} \n")
         self._logger.info(
             "Computation completed. Results stored in object attributes. \n"
         )
 
-    def _perform_calculations_dfpt(self):
-        pass
-
     def _imaginary_frequencies(self):
         negative_indices = []
-        self._logger.info(f"Phonon vectors:\n{self.phonon_vecs} \n")
+        self._logger.info(f"Phonon vectors:\n{np.array2string(self.phonon_vecs, precision=6, suppress_small=True)} \n")
         for index, fc_eval in enumerate(self.freq_cm):
             if fc_eval < self.unstable_threshold:
                 negative_indices.append(index)
         self._logger.info(f"Unstable indices:\n{negative_indices} \n")
         return negative_indices if negative_indices else False
-
-    def stabilize_matrix(self, matrix, threshold=50000, epsilon=1e-12, alpha=0.001):
-        initial_cond_number = np.linalg.cond(matrix)
-        self._logger.info(f"Initial Condition Number: {initial_cond_number}")
-        if initial_cond_number > threshold:
-            self._logger.info("Applying stabilization.")
-            initial_diagonal = np.diag(matrix).copy()
-            for i in range(matrix.shape[0]):
-                row_sum = np.sum(np.abs(matrix[i, :])) - matrix[i, i]
-                if matrix[i, i] < row_sum:
-                    matrix[i, i] = (1 - epsilon) * initial_diagonal[
-                        i
-                    ] + epsilon * row_sum
-            sym_matrix = (matrix + matrix.T) / 2
-            matrix = (1 - alpha) * matrix + alpha * sym_matrix
-        stabilized_cond_number = np.linalg.cond(matrix)
-        self._logger.info(f"Stabilized Condition Number: {stabilized_cond_number}")
-        return matrix
 
     def run_smodes(self, smodes_input):
         if not Path(settings.SMODES_PATH).is_file():
@@ -354,7 +331,8 @@ class SmodesProcessor(FlpzCore):
                 normalized = flattened / norm_val
                 normalized_matrix = normalized.reshape(self.phonon_vecs[i].shape)
                 unstable_normalized.append(normalized_matrix)
-            self._logger.info(f"Normalized unstable phonons:\n{unstable_normalized} \n")
+        for i, mat in enumerate(unstable_normalized):
+            self._logger.info(f"Matrix {i}:\n{np.array2string(mat, precision=4, suppress_small=True)}\n")
             return unstable_normalized
 
     def symmadapt(self):
@@ -363,21 +341,12 @@ class SmodesProcessor(FlpzCore):
         return self.unstable_phonons()
 
 
-def main():
-    input_file = str(sys.argv[1])
-    smodesInput = str(sys.argv[2])
-    target_irrep = str(sys.argv[3])
-    # Example usage:
-    # from symmstate.slurm_file import SlurmFile
-    # slurm_obj = SlurmFile(sbatch_header_source="Your SLURM header here as multiline string", num_processors=32)
-    # calculator = SmodesProcessor(abi_file=input_file, smodes_input=smodesInput, target_irrep=target_irrep, slurm_obj=slurm_obj)
-    calculator = SmodesProcessor(input_file, smodesInput, target_irrep)
-    # Uncomment the following lines to see outputs:
-    # print("Dyn Frequencies (THz, cm^-1):", calculator.dyn_freqs)
-    # print("Force Constant Evaluations:", calculator.fc_evals)
-    # print("Phonon Vecs Shape:", calculator.phonon_vecs.shape)
-    # print("Reduced Masses:", calculator.red_mass)
-
-
-if __name__ == "__main__":
-    main()
+# Example usage:
+# from symmstate.slurm_file import SlurmFile
+# slurm_obj = SlurmFile(sbatch_header_source="Your SLURM header here as multiline string", num_processors=32)
+# calculator = SmodesProcessor(abi_file=input_file, smodes_input=smodesInput, target_irrep=target_irrep, slurm_obj=slurm_obj)
+# Uncomment the following lines to see outputs:
+# print("Dyn Frequencies (THz, cm^-1):", calculator.dyn_freqs)
+# print("Force Constant Evaluations:", calculator.fc_evals)
+# print("Phonon Vecs Shape:", calculator.phonon_vecs.shape)
+# print("Reduced Masses:", calculator.red_mass)
