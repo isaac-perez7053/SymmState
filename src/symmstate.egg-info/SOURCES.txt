@@ -52,5 +52,6 @@ src/symmstate/utils/numerical.py
 src/symmstate/utils/paths.py
 src/symmstate/utils/symmetry_adapted_basis.py
 src/symmstate/vasp/__init__.py
-src/symmstate/vasp/vasp_convergence_file.py
+src/symmstate/vasp/vasp_file.py
+src/symmstate/vasp/vasp_parser.py
 src/symmstate/vasp/vasp_unit_cell.py
