@@ -1,7 +1,11 @@
+"""
+The DataParser class contains functions related to extracting data from a file and 
+putting them in useful structures.
+"""
+
 from typing import Optional
 import numpy as np
 import re
-import logging
 from typing import Union, List
 
 
@@ -10,7 +14,12 @@ class DataParser:
         pass
 
     @staticmethod
-    def grab_energy(abo_file: str, logger: logging = None) -> None:
+    def remove_comments(content: str) -> str:
+        """Removes comments beginning with #"""
+        return "\n".join(line.split("#", 1)[0] for line in content.splitlines())
+
+    @staticmethod
+    def grab_energy(abo_file: str) -> None:
         """
         Retrieves the total energy from a specified Abinit output file.
         """
@@ -26,17 +35,13 @@ class DataParser:
                 total_energy_value = match.group(1)
                 energy: float = float(total_energy_value)
             else:
-                (logger.info if logger is not None else print)(
-                    "Total energy not found."
-                )
+                print("Total energy not found.")
         except FileNotFoundError:
-            (logger.info if logger is not None else print)(
-                f"The file {abo_file} was not found."
-            )
+            print(f"The file {abo_file} was not found.")
         return energy
 
     @staticmethod
-    def grab_flexo_tensor(anaddb_file: str, logger: logging = None) -> None:
+    def grab_flexo_tensor(anaddb_file: str) -> None:
         """
         Retrieves the TOTAL flexoelectric tensor from the specified file.
         """
@@ -54,34 +59,11 @@ class DataParser:
                     [list(map(float, line.split()[1:])) for line in tensor_strings]
                 )
         except FileNotFoundError:
-            (logger.info if logger is not None else print)(
-                f"The file {anaddb_file} was not found.", logger=logger
-            )
+            print(f"The file {anaddb_file} was not found.")
         return flexo_tensor
 
     @staticmethod
-    def parse_tensor(tensor_str: str, logger: logging = None) -> np.ndarray:
-        """
-        Parses a tensor string into a NumPy array.
-        """
-        lines = tensor_str.strip().splitlines()
-        tensor_data = []
-        for line in lines:
-            elements = line.split()
-            if all(part.lstrip("-").replace(".", "", 1).isdigit() for part in elements):
-                try:
-                    numbers = [float(value) for value in elements]
-                    tensor_data.append(numbers)
-                except ValueError as e:
-                    (logger.info if logger is not None else print)(
-                        f"Could not convert line to numbers: {line}, Error: {e}",
-                        logger=logger,
-                    )
-                    raise
-        return np.array(tensor_data)
-
-    @staticmethod
-    def grab_piezo_tensor(anaddb_file: str, logger: logging = None) -> None:
+    def grab_piezo_tensor(anaddb_file: str) -> None:
         """
         Retrieves the clamped and relaxed ion piezoelectric tensors.
         """
@@ -109,50 +91,52 @@ class DataParser:
                     [list(map(float, line.split())) for line in relaxed_strings]
                 )
         except FileNotFoundError:
-            (logger.info if logger is not None else print)(
-                f"The file {anaddb_file} was not found.", logger=logger
-            )
+            print(f"The file {anaddb_file} was not found.")
         return piezo_tensor_clamped, piezo_tensor_relaxed
 
     @staticmethod
-    def parse_matrix(
-        content: str, key: str, dtype: type, all_matches: bool = False
-    ) -> Union[np.ndarray, List[np.ndarray], None]:
-        """
-        Extract one or more matrices that follow lines containing exactly `key`.
+    def parse_matrix(content: str, key: str, dtype: type) -> Union[np.ndarray, None]:
+        lines = content.strip().splitlines()
+        matrices: List[List] = []
+        found_key = False
+        start_index = -1
 
-        A matrix is defined as the block of subsequent non-empty lines
-        each starting with a digit or '-' (allowing negative numbers).
+        for i, line in enumerate(lines):
+            if re.search(rf"\b{re.escape(key)}\b", line):
+                found_key = True
+                tokens = line.split()
+                if len(tokens) > 1 and re.match(r"^[-+.\deEdD]", tokens[1]):
+                    # Matrix starts on the same line
+                    try:
+                        row = [
+                            dtype(tok.replace("d", "e").replace("D", "e"))
+                            for tok in tokens[1:]
+                        ]
+                        matrices.append(row)
+                    except ValueError:
+                        pass
+                    start_index = i + 1
+                else:
+                    start_index = i + 1
+                break
 
-        By default returns the first match as an np.ndarray.
-        If all_matches=True, returns a list of np.ndarrays.
-        Returns None if no matching key line or no data.
-        """
-        # Pattern to find lines that are exactly `key` (with optional indent)
-        key_pattern = re.compile(rf"^\s*{re.escape(key)}\s*$", flags=re.MULTILINE)
-        lines = content.splitlines()
-
-        matrices: List[np.ndarray] = []
-        # Iterate over every line that matches the key
-        for match in key_pattern.finditer(content):
-            # figure out which line number it was
-            start_line = content[: match.start()].count("\n")
-            block: List[List] = []
-            # collect following lines that start with digit or '-'
-            for ln in lines[start_line + 1 :]:
-                stripped = ln.strip()
-                if not stripped or not re.match(r"^[-\d]", stripped):
-                    break
-                # convert each token in that row
-                row = [dtype(tok) for tok in stripped.split()]
-                block.append(row)
-            if block:
-                matrices.append(np.array(block, dtype=dtype))
-
-        if not matrices:
+        if not found_key or start_index < 0:
             return None
 
-        return matrices if all_matches else matrices[0]
+        for j in range(start_index, len(lines)):
+            line = lines[j].strip()
+            if not line:
+                continue
+            tokens = line.split()
+            if len(tokens) != 3:
+                break
+            try:
+                row = [dtype(tok.replace("d", "e").replace("D", "e")) for tok in tokens]
+                matrices.append(row)
+            except ValueError:
+                break
+
+        return np.array(matrices, dtype=dtype) if matrices else None
 
     @staticmethod
     def parse_scalar(
@@ -160,11 +144,6 @@ class DataParser:
     ) -> Union[type, List[type], None]:
         """
         Extract scalar value(s) following `key`.
-
-        - Recognizes FORTRAN‑style exponents (d/D) and converts them to 'e' for Python.
-        - By default returns the first match as a single dtype.
-        - If all_matches=True, returns List[dtype], one element per occurrence.
-        - Returns None if no numeric match is found.
         """
         # Regex for a number with optional sign, decimal part, and e/D exponent
         num_re = (
@@ -190,7 +169,7 @@ class DataParser:
             try:
                 converted.append(dtype(norm))
             except ValueError:
-                # skip anything that still fails conversion
+                # skip anything that still fails conversion ;)
                 pass
 
         if not converted:
@@ -222,6 +201,7 @@ class DataParser:
 
         return results if all_matches else results[0]
 
+    @staticmethod
     def parse_array(
         content: str, param_name: str, dtype: type, all_matches: bool = False
     ) -> Union[List, List[List], None]:
@@ -237,8 +217,6 @@ class DataParser:
         If all_matches=True, returns List[List] (one sublist per match).
         Returns None if there are no matches.
         """
-        # float‑literal regex with no capturing subgroups
-        float_re = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
 
         if dtype is str:
             # grab everything after param_name (incl. units)
@@ -288,5 +266,11 @@ class DataParser:
 
         if not results:
             return None
+
+        if all_matches != False:
+            for result in results:
+                result = np.array(result)
+        else:
+            results[0] = np.array(results[0])
 
         return results if all_matches else results[0]

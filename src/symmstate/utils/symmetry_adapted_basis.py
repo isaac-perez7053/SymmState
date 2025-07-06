@@ -2,14 +2,71 @@ import numpy as np
 from pathlib import Path
 import subprocess
 import os
-from pymatgen.core import Structure, Lattice, Element
+from pymatgen.core import Element, Structure
 from symmstate.config.symm_state_settings import settings
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import warnings
+from typing import List
 
 
 class SymmAdaptedBasis:
-    def __init__(self):
-        pass
+    """
+    Class associated with calculating quantities associated with points in k-space
+    """
+
+    def __init__(self, structure: Structure, irrep_labels: List[str]):
+        self.smodes_file = SymmAdaptedBasis.get_smodes_input_string(
+            structure, irrep_labels
+        )
+        self.irrep = irrep_labels
+        self.structure = structure
+
+    @staticmethod
+    def get_smodes_input_string(structure: Structure, irrep_labels: str = None):
+        """
+        Returns a mutliline string used to execute smodes
+        TODO: Write this
+        """
+        analyzer = SpacegroupAnalyzer(structure, symprec=1e-5)
+        lattice = structure.lattice
+        sg_number = analyzer.get_space_group_number()
+
+        # Get conventional cell to extract Wyckoff positions
+        symm_struct = analyzer.get_symmetrized_structure()
+        wyckoff_map = {}
+        for sites, wyckoff in zip(
+            symm_struct.equivalent_sites, symm_struct.wyckoff_symbols
+        ):
+            element = sites[0].specie.symbol
+            wyckoff_map[element] = wyck.lower()  # SMODES expects lowercase
+
+        # Lattice parameters and angles
+        a, b, c = lattice.abc
+        alpha, beta, gamma = lattice.angles
+        ax = f"{a:.10f} {b:.10f} {c:.10f}"
+        ratios_angles = (
+            f"{a/b:.4f} {b/b:.4f} {c/b:.4f}  {alpha:.1f} {beta:.1f} {gamma:.1f}"
+        )
+
+        # Unique elements in sorted order
+        species = sorted(set([site.specie.symbol for site in structure]))
+
+        # Build output as a list of lines
+        lines = []
+        lines.append(ax)
+        lines.append(str(sg_number))
+        lines.append(ratios_angles)
+        lines.append(str(len(species)))
+        for elem in species:
+            wyck = wyckoff_map.get(elem, "?")
+            lines.append(f"{elem} {wyck}")
+        if irrep_labels:
+            lines.append(str(len(irrep_labels)))
+            lines.extend(irrep_labels)
+        else:
+            lines.append("0")
+
+        return "\n".join(lines)
 
     @staticmethod
     def symmatry_adapted_basis(
@@ -42,7 +99,9 @@ class SymmAdaptedBasis:
         # Parse lattice parameters
         prec_lat_param = [float(x) for x in s_lines[0].split()]
 
-        print(f"Precision Lattice Parameters:\n {np.array2string(prec_lat_param, precision=6, suppress_small=True)}\n ")
+        print(
+            f"Precision Lattice Parameters:\n {np.array2string(prec_lat_param, precision=6, suppress_small=True)}\n "
+        )
         acell = [1, 1, 1]
 
         # Execute SMODES and process output
@@ -173,7 +232,9 @@ class SymmAdaptedBasis:
         atom_positions = SymmAdaptedBasis._clean_positions(
             atom_positions_raw, prec_lat_param, clean_list, symm_prec=symm_prec
         )
-        print(f"Smodes Unit Cell Coordinates:\n {np.array2string(atom_positions, precision=6, suppress_small=True)} \n")
+        print(
+            f"Smodes Unit Cell Coordinates:\n {np.array2string(atom_positions, precision=6, suppress_small=True)} \n"
+        )
         coordinates = atom_positions
         pos_mat_cart = coordinates.copy()
 
@@ -383,3 +444,163 @@ class SymmAdaptedBasis:
                 )
 
         return orth_mat
+
+    @staticmethod
+    def available_symmetries_info(smodes_file, only_irreps=False):
+        """
+        Returns an array of tuples, each containing the available symmetries at a k-point along with
+        the degeneracies and modes associated with each symmetry.
+
+        Parameters:
+            smodes_file (Path or str): The path to the SMODES input file.
+            only_irreps (bool): If True, return only the list of irreducible representations (irreps).
+                                If False (default), return a list of tuples (irrep, degeneracy, num_modes).
+
+        Returns:
+            list:
+                If only_irreps is True:
+                    List of irreducible representations (str).
+                If only_irreps is False:
+                    List of tuples (irrep, degeneracy, num_modes), where each element is a string.
+
+        Raises:
+            FileNotFoundError:
+                If the SMODES input file does not exist.
+            RuntimeError:
+                If SMODES execution fails.
+        """
+        if not Path(smodes_file).is_file():
+            raise FileNotFoundError(
+                f"SMODES input file not found at: {smodes_file}. Current directory is {os.getcwd()}"
+            )
+
+        # Execute SMODES and process output
+        command = f"{str(settings.SMODES_PATH)} < {smodes_file}"
+        proc = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        stdout, stderr = proc.communicate()
+
+        if proc.returncode != 0:
+            raise RuntimeError(f"SMODES execution failed:\n{stderr}")
+
+        # Extract irreps from output
+        irreps = []
+        degeneracy = []
+        num_modes = []
+        for line in stdout.splitlines():
+            if "Irrep" in line:
+                parts = line.split()
+                irreps.append(parts[1])
+                continue
+
+            if "Degeneracy:" in line:
+                parts = line.split()
+                degeneracy.append(parts[1])
+                continue
+
+            if "Total number of modes:" in line:
+                parts = line.split()
+                num_modes.append(parts[4])
+                continue
+
+        # Return a list of tuples, each tuple is (irrep, degeneracy, num_modes)
+        if only_irreps:
+            return irreps
+        else:
+            return list(zip(irreps, degeneracy, num_modes))
+
+    @staticmethod
+    def all_modes(smodes_file):
+        """ """
+        if not Path(smodes_file):
+            raise FileNotFoundError(
+                f"SMODES input file not found at: {smodes_file}. Current directory is {os.getcwd()}"
+            )
+
+        # Execute SMODES and process output
+        command = f"{str(settings.SMODES_PATH)} < {smodes_file}"
+        proc = subprocess.Popen(
+            command,
+            shell=True,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        stdout, stderr = proc.communicate()
+
+        if proc.returncode != 0:
+            raise RuntimeError(f"SMODES execution failed:\n{stderr}")
+
+        # Process file and store relavent information
+        irreps = []
+        degeneracy = []
+        num_modes = []
+        lattice = []
+        ionpos = []
+        atom_types = []
+        atom_nums = []
+        for line in stdout.splitlines():
+            if "Irrep" in line:
+                parts = line.split()
+                irreps.append(parts[1])
+                continue
+
+            if "Degeneracy:" in line:
+                parts = line.split()
+                degeneracy.append(parts[1])
+                continue
+
+            if "Total number of modes:" in line:
+                parts = line.split()
+                num_modes.append(parts[4])
+                continue
+
+            if "Vectors defining superlattice" in line:
+                in_lattice = True
+                single_lattice = []
+                continue
+
+            if in_lattice:
+                # Expecting 3 lines of lattice vectors
+                if len(lattice < 3):
+                    single_lattice.append([float(x) for x in line.split()])
+                    if len(lattice) == 3:
+                        in_lattice = False
+                        lattice.append(np.array(single_lattice))
+                continue
+
+            if "atom  type   position" in line:
+                in_atoms = True
+                atom_positions = []
+                continue
+
+            if in_atoms:
+                if line.startswith("Symmetry modes:") or line.startswith(
+                    "------------------------------------------"
+                ):
+                    in_atoms = False
+                    ionpos.append(np.array(atom_positions))
+                    continue
+                parts = line.split()
+                if len(parts) >= 5:
+                    atom_nums.append(int(parts[0]))
+                    atom_types.append(parts[1])
+                    atom_positions.append(
+                        [float(parts[2]), float(parts[3]), float(parts[4])]
+                    )
+                else:
+                    # End of atom list
+                    in_atoms = False
+                    ionpos.append(np.array(atom_positions))
+
+        # TODO: Ensure that everything is numpy related
+        # TODO: Also package this as irreps, degeneracy, num_modes, lattice, atom_types, ionpos, perturbation
+
+        return list(
+            zip(irreps, degeneracy, num_modes, lattice, ionpos, atom_nums, atom_types)
+        )

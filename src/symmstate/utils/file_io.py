@@ -4,21 +4,6 @@ from pathlib import Path
 from typing import Union
 
 
-def get_unique_filename(base_name: Union[str, Path], directory: str = ".") -> str:
-    """Generate unique filename with incremental suffix if conflicts exist"""
-    base_path = Path(directory) / base_name
-    if not base_path.exists():
-        return str(base_path)
-
-    counter = 1
-    while True:
-        new_name = f"{base_path.stem}_{counter:03}{base_path.suffix}"
-        candidate = base_path.with_name(new_name)
-        if not candidate.exists():
-            return str(candidate)
-        counter += 1
-
-
 def safe_file_copy(src: Union[str, Path], dest_dir: Union[str, Path]) -> Path:
     """Copy file with conflict resolution"""
     dest_dir = Path(dest_dir)
@@ -27,3 +12,29 @@ def safe_file_copy(src: Union[str, Path], dest_dir: Union[str, Path]) -> Path:
     dest_path = Path(get_unique_filename(dest_path))
     shutil.copy(src, dest_path)
     return dest_path
+
+
+def get_unique_filename(base_name, directory=".") -> str:
+    """
+    Get the unique filename of a file
+    """
+    # Get the full path for the base file
+    full_path = os.path.join(directory, base_name)
+
+    # If the file does not exist, return the base name
+    if not os.path.isfile(full_path):
+        return base_name
+
+    # Otherwise, start creating new filenames with incrementing numbers
+    counter = 0
+    while True:
+        # Format the new filename with leading zeros
+        new_name = f"{os.path.splitext(base_name)[0]}_{counter:03}{os.path.splitext(base_name)[1]}"
+        new_full_path = os.path.join(directory, new_name)
+
+        # Check if the new filename is available
+        if not os.path.isfile(new_full_path):
+            return new_name
+
+        # Increment the counter
+        counter += 1

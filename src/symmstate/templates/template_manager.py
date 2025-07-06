@@ -138,4 +138,3 @@ class TemplateManager(SymmStateCore):
                 json.dump(self.special_templates, f, indent=2)
         else:
             raise KeyError(f"No special template found for role '{role}'")
- 

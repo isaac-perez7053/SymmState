@@ -12,13 +12,13 @@ def find_package_path(package_name: str = "symmstate") -> str:
 
 class SymmStateSettings:
     """Handles SymmState configuration settings"""
-    
+
     SETTINGS_FILE = "settings.json"
     DEFAULTS = {}
 
     def __init__(self):
         symmstate_path = find_package_path()
-        
+
         self.DEFAULTS = {
             "PP_DIR": str(Path(symmstate_path) / "pseudopotentials"),
             "TEMPLATES_DIR": str(Path(symmstate_path) / "templates"),

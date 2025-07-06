@@ -1,11 +1,10 @@
 from symmstate.config.symm_state_settings import settings
 from symmstate.flpz.smodes_processor import SmodesProcessor
 from symmstate.flpz.perturbations import Perturbations
-from symmstate.flpz import FlpzCore
 from symmstate.slurm import SlurmFile
 
 
-class EnergyProgram(FlpzCore):
+class EnergyProgram:
     """
     EnergyProgram runs a series of SMODES and perturbation calculations to analyze
     energy, piezoelectric, and flexoelectric properties.
@@ -43,9 +42,6 @@ class EnergyProgram(FlpzCore):
         self.__smodes_processor = None
         self.__perturbations = []
 
-        # Set logger for slurm_obj
-        self.slurm_obj.set_logger(self._logger)
-
     def run_program(self):
         ascii_str1 = """
  ____                                _        _       
@@ -61,7 +57,7 @@ class EnergyProgram(FlpzCore):
 |_____|_| |_|\___|_|  \__, |\__, | |_|   |_|  \___/ \__, |_|  \__,_|_| |_| |_|
                       |___/ |___/                   |___/       
 """
-        self._logger.info(ascii_str1)
+        print(ascii_str1)
 
         # Initialize SmodesProcessor using the provided slurm_obj and the SMODES path from settings.
         smodes_proc = SmodesProcessor(
@@ -76,13 +72,13 @@ class EnergyProgram(FlpzCore):
         self.__smodes_processor = smodes_proc
         normalized_phonon_vecs = smodes_proc.symmadapt()
 
-        self._logger.info(f"Phonon Displacement Vectors:\n{smodes_proc.phonon_vecs}")
-        self._logger.info(f"Force Constant Evaluations:\n{smodes_proc.fc_evals}")
-        self._logger.info(f"Dynamical Frequencies:\n{smodes_proc.dyn_freqs}")
-        self._logger.info(f"Normalized Unstable Phonons:\n{normalized_phonon_vecs}")
+        print(f"Phonon Displacement Vectors:\n{smodes_proc.phonon_vecs}")
+        print(f"Force Constant Evaluations:\n{smodes_proc.fc_evals}")
+        print(f"Dynamical Frequencies:\n{smodes_proc.dyn_freqs}")
+        print(f"Normalized Unstable Phonons:\n{normalized_phonon_vecs}")
 
         if len(normalized_phonon_vecs) == 0:
-            self._logger.info("No unstable phonons were found")
+            print("No unstable phonons were found")
         else:
             ascii_str3 = """
   ____      _            _       _   _             
@@ -98,7 +94,7 @@ class EnergyProgram(FlpzCore):
 |_____|_| |_|\___|_|  \__, |_|\___||___/
                       |___/             
 """
-            self._logger.info(ascii_str3)
+            print(ascii_str3)
 
             # Update smodes processor abinit file:
             smodes_proc.abinit_file.update_unit_cell_parameters()
@@ -116,12 +112,10 @@ class EnergyProgram(FlpzCore):
                 )
                 self.__perturbations.append(pert_obj)
                 pert_obj.generate_perturbations()
-                self._logger.info("Generated Perturbations!")
+                print("Generated Perturbations!")
                 pert_obj.calculate_energy_of_perturbations()
-                self._logger.info(
-                    f"Amplitudes of Unstable Phonon {i}: {pert_obj.list_amps}"
-                )
-                self._logger.info(
+                print(f"Amplitudes of Unstable Phonon {i}: {pert_obj.list_amps}")
+                print(
                     f"Energies of Unstable Phonon {i}: {pert_obj.results['energies']}"
                 )
                 pert_obj.record_data("recorded_energies.txt")
@@ -134,7 +128,7 @@ class EnergyProgram(FlpzCore):
 |_|   |_|_| |_|_|___/_| |_|\___|\__,_|
 """
 
-        self._logger.info(ascii_str4)
+        print(ascii_str4)
 
     def get_smodes_processor(self):
         return self.__smodes_processor

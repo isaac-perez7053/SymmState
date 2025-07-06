@@ -2,9 +2,7 @@ import subprocess
 import time
 from typing import Optional
 from symmstate.slurm.slurm_header import SlurmHeader
-import logging
-from symmstate._symm_state_core import SymmStateCore
-import os
+from symmstate.utils import get_unique_filename
 
 
 class SlurmFile:
@@ -22,7 +20,6 @@ class SlurmFile:
         raw_header: Optional[str] = None,
         num_processors: int = 8,
         mpi_command_template: str = "mpirun -np {num_procs} abinit < {input_file} > {log}",
-        logger: logging = None,
     ):
         """
         Initialize a SlurmFile instance.
@@ -36,27 +33,20 @@ class SlurmFile:
                 The default number of MPI processors (default is 8).
             mpi_command_template (str):
                 A template for constructing the MPI command line used in the batch script.
-            logger (logging):
-                A logger to information regarding the SlurmFile object
         """
         self.slurm_header = slurm_header
         self.raw_header = raw_header
         self.num_processors = num_processors
         self.mpi_command_template = mpi_command_template
-        self._logger = logger
 
         # We track job IDs for monitoring.
         self.running_jobs = []
 
         # In case user passes both slurm_header and raw_header, we default to raw_header
         if self.raw_header and self.slurm_header:
-            (self._logger.info if self._logger is not None else print)(
-                "Warning: raw_header provided; ignoring slurm_header."
-            )
+            print("Warning: raw_header provided; ignoring slurm_header.")
 
-        (self._logger.info if self._logger is not None else print)(
-            f"Initialized SlurmFile with {self.num_processors} processors"
-        )
+        print(f"Initialized SlurmFile with {self.num_processors} processors")
 
     def write_batch_script(
         self,
@@ -66,7 +56,7 @@ class SlurmFile:
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        Write a SLURM batch script with the specified input and logging details.
+        Write a SLURM batch script with the specified input
 
         This function assembles a batch script by combining a shebang, header text (from either
         a raw header or a SLURM header), and an MPI command formatted with the given input and log
@@ -108,14 +98,11 @@ class SlurmFile:
             script_content += f"\n\n{extra_commands}\n"
 
         # Write the script to disk
-        batch_name = SymmStateCore._get_unique_filename(batch_name)
+        batch_name = get_unique_filename(batch_name)
         with open(batch_name, "w") as script_file:
             script_file.write(script_content)
 
-        # Add a logger here
-        (self._logger.info if self._logger is not None else print)(
-            f"Wrote batch script to {batch_name}"
-        )
+        print(f"Wrote batch script to {batch_name}")
         return batch_name
 
     def submit_job(self, batch_script: str) -> Optional[str]:
@@ -143,29 +130,21 @@ class SlurmFile:
             )
             # Typically, SLURM responds with something like: "Submitted batch job 123456"
             output = result.stdout.strip()
-            (self._logger.info if self._logger is not None else print)(
-                f"sbatch output: {output}"
-            )
+            print(f"sbatch output: {output}")
 
             # Parse job ID
             # Example: "Submitted batch job 123456"
             if "Submitted batch job" in output:
                 job_id = output.split()[-1]
                 self.running_jobs.append(job_id)
-                (self._logger.info if self._logger is not None else print)(
-                    f"Job submitted with ID {job_id}"
-                )
+                print(f"Job submitted with ID {job_id}")
                 return job_id
             else:
-                (self._logger.info if self._logger is not None else print)(
-                    "Could not parse job ID from sbatch output."
-                )
+                print("Could not parse job ID from sbatch output.")
                 return None
 
         except subprocess.CalledProcessError as e:
-            (self._logger.info if self._logger is not None else print)(
-                f"Error submitting job: {e.stderr}"
-            )
+            print(f"Error submitting job: {e.stderr}")
             return None
 
     def all_jobs_finished(self) -> bool:
@@ -222,14 +201,10 @@ class SlurmFile:
                         all_finished = False
 
             except subprocess.TimeoutExpired:
-                (self._logger.info if self._logger is not None else print)(
-                    f"Timeout checking job {job_id} status"
-                )
+                print(f"Timeout checking job {job_id} status")
                 all_finished = False
             except Exception as e:
-                (self._logger.info if self._logger is not None else print)(
-                    f"Error checking job {job_id}: {str(e)}"
-                )
+                print(f"Error checking job {job_id}: {str(e)}")
                 all_finished = False
 
         # Remove completed jobs from tracking
@@ -251,9 +226,7 @@ class SlurmFile:
             check_time (int): Time in seconds to wait between job status checks (default is 60).
             check_once (bool): If True, perform only a single check instead of continuous polling.
         """
-        (self._logger.info if self._logger is not None else print)(
-            f"Monitoring {len(self.running_jobs)} jobs...\n"
-        )
+        print(f"Monitoring {len(self.running_jobs)} jobs...\n")
         try:
             if check_once:
                 time.sleep(check_time)
@@ -268,25 +241,15 @@ class SlurmFile:
 
                 final_msg = f"All jobs finished after {total_time/60:.3f} minutes."
                 print()  # Move to next line in terminal
-                if self._logger is not None:
-                    self._logger.info(final_msg)
-                else:
-                    print(final_msg)
+                print(final_msg)
 
         except KeyboardInterrupt:
             # TODO: Cancel all running jobs if interrupted
-            (self._logger.info if self._logger is not None else print)(
-                "\nJob monitoring interrupted by user!"
-            )
+            print("\nJob monitoring interrupted by user!")
         finally:
             if self.running_jobs:
-                (self._logger.info if self._logger is not None else print)(
+                print(
                     f"Warning: {len(self.running_jobs)} jobs still tracked after monitoring."
                 )
             else:
-                (self._logger.info if self._logger is not None else print)(
-                    "All jobs completed successfully!"
-                )
-
-    def set_logger(self, logger: logging) -> None:
-        self._logger = logger
+                print("All jobs completed successfully!")

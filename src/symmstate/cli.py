@@ -15,7 +15,7 @@ from symmstate.flpz.data_analysis import (
 from symmstate.abinit.abinit_file import AbinitFile
 import click
 import subprocess
-from symmstate.utils import DataParser, Documentation
+from symmstate.utils import DataParser
 from symmstate.abinit import AbinitParser
 
 
@@ -160,18 +160,25 @@ def variables(list, abinit, peek):
     type=click.Path(),
     help="Set the path to the SMODES executable file",
 )
-
 @click.option("--templates-dir", type=click.Path(), help="Set the templates directory")
-
 @click.option(
     "--reset-pp-dir",
     is_flag=True,
     help="Reset the pseudopotentials directory to its default value",
 )
-
 @click.option("-l", "--list", is_flag=True, help="List current global settings")
-
-def config(pp_dir, working_dir, ecut, symm_prec, project_root, test_dir, smodes_path, templates_dir ,reset_pp_dir, list):
+def config(
+    pp_dir,
+    working_dir,
+    ecut,
+    symm_prec,
+    project_root,
+    test_dir,
+    smodes_path,
+    templates_dir,
+    reset_pp_dir,
+    list,
+):
     """Manage global settings of the package"""
     updated = False
     if pp_dir:
@@ -203,7 +210,7 @@ def config(pp_dir, working_dir, ecut, symm_prec, project_root, test_dir, smodes_
     if templates_dir:
         settings.TEMPLATES_DIR = Path(templates_dir).resolve()
         click.echo(f"TEMPLATES_DIR set to: {settings.TEMPLATES_DIR}")
-    
+
     if list:
         click.echo("Current global settings:")
         click.echo(f"PP_DIR: {settings.PP_DIR}")
@@ -764,51 +771,6 @@ def grab(flexotensor, piezotensor, energy):
     if energy:
         energy_value = DataParser.grab_energy(energy)
         click.echo(f"Energy located in the file {energy} is:\n" f"{energy_value}")
-
-
-# Create a single Documentation instance.
-docs = Documentation()
-
-# Define constant strings.
-UNIT_CELL_DOC = docs.UNITCELL
-ABINIT_UNIT_CELL_DOC = docs.ABINIT_UNIT_CELL_DOC
-ABINIT_FILE_DOC = docs.ABINIT_FILE_DOC
-SLURM_FILE_DOC = docs.SLURM_FILE_DOC
-
-
-@cli.command()
-@click.option(
-    "--unit-cell",
-    is_flag=True,
-    help="Show extended documentation for the UnitCell class",
-)
-@click.option(
-    "--abinit-cell",
-    is_flag=True,
-    help="Show extended documentation for the AbinitUnitCell class",
-)
-@click.option(
-    "--abinit-file",
-    is_flag=True,
-    help="Show extended documentation for the AbinitFile class",
-)
-@click.option(
-    "--slurm-file",
-    is_flag=True,
-    help="Show extended documentation for the SlurmFile class",
-)
-def examples(unit_cell, abinit_cell, abinit_file, slurm_file):
-    """Displays examples and extended documentation"""
-    if unit_cell:
-        click.echo(UNIT_CELL_DOC)
-    elif abinit_cell:
-        click.echo(ABINIT_UNIT_CELL_DOC)
-    elif abinit_file:
-        click.echo(ABINIT_FILE_DOC)
-    elif slurm_file:
-        click.echo(SLURM_FILE_DOC)
-    else:
-        click.echo("No example selected. Please specify one of the available options.")
 
 
 if __name__ == "__main__":

@@ -4,3 +4,5 @@ dist/
 __pycache__/
 symmstate.log/
 .venv/
+ISOTROPY/
+p_testing/

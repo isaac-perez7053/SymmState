@@ -1,15 +1,15 @@
-from . import AbinitUnitCell
 import os
-import subprocess
 import copy
+import numpy as np
+from symmstate.abinit.abinit_structure import AbinitStructure
 from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
-from symmstate.templates.template_manager import TemplateManager
-from typing import Optional, List
-from symmstate.slurm import *
-from pymatgen.core import Structure
+from symmstate.templates import TemplateManager
+from symmstate.utils import get_unique_filename
+from typing import Optional, List, Dict
+from symmstate.slurm import SlurmFile
 
 
-class AbinitFile(AbinitUnitCell):
+class AbinitFile(AbinitStructure):
     """
     Class for writing, managing, and executing Abinit input files (.abi).
 
@@ -25,54 +25,36 @@ class AbinitFile(AbinitUnitCell):
 
     def __init__(
         self,
-        abi_file: Optional[str] = None,
-        unit_cell: Optional[Structure] = None,
-        *,
-        smodes_input: Optional[str] = None,
-        target_irrep: Optional[str] = None,
-    ) -> None:
+        abi_file: str = None,
+    ) -> "AbinitFile":
         """
-        Initialize an AbinitFile instance.
-
-        This initializer supports multiple ways to create an AbinitFile:
-          1. Via an existing Abinit input file (abi_file). This is the most common method.
-          2. Through a provided unit cell (Structure) to generate the input file.
-          3. Using symmetry-adapted basis information with smodes_input and target_irrep.
+        Initialize an AbinitFile instance using an Abinit file or dictionary
 
         Parameters:
-            abi_file (Optional[str]):
+            abi_file (str):
                 Path to an existing Abinit file. If provided, the file name (without .abi extension)
                 is used for further processing.
-            unit_cell (Optional[Structure]):
-                A Structure object representing the unit cell. Used when generating an Abinit file from scratch.
-            smodes_input (Optional[str], keyword-only):
-                Input string for symmetry-adapted modes, used to define the basis when combined with target_irrep.
-            target_irrep (Optional[str], keyword-only):
-                The target irreducible representation corresponding to the symmetry-adapted basis.
 
-        Returns:
-            None
         """
         # Initialize AbinitUnitCell with supported parameters.
-        AbinitUnitCell.__init__(
-            self,
-            abi_file=abi_file,
-            unit_cell=unit_cell,
-            smodes_input=smodes_input,
-            target_irrep=target_irrep,
-        )
+        obj = AbinitStructure.from_file(abi_file)
+        for attr, value in vars(obj).items():
+            setattr(self, attr, value)
+        self.filename = str(abi_file).replace(".abi", "")
 
-        if abi_file is not None:
-            self._logger.info(f"Name of abinit file: {abi_file}")
-            self.file_name: str = str(abi_file).replace(".abi", "")
-        else:
-            self.file_name = "abinit_file"
+    @classmethod
+    def from_dict(cls, dict: Dict, filename: str) -> "AbinitFile":
+        """
+        Initialize from a dictionary and filename.
+        """
+        obj = cls(dict)
+        obj.filename = filename
+        return obj
 
-    def write_custom_abifile(
+    def write(
         self,
         output_file: str,
         content: str,
-        coords_are_cartesian: bool = False,
         pseudos: List = [],
     ) -> str:
         """
@@ -88,9 +70,6 @@ class AbinitFile(AbinitUnitCell):
                 Base filename for the output file; a unique name is generated.
             content (str):
                 Header content as a literal string or a file path to be read.
-            coords_are_cartesian (bool, optional):
-                If True, atomic coordinates are written as cartesian (xcart); otherwise, as reduced (xred).
-                Default is False.
             pseudos (List, optional):
                 List of pseudopotential identifiers; if empty, defaults to those in self.vars.
 
@@ -108,106 +87,114 @@ class AbinitFile(AbinitUnitCell):
                 header_content = hf.read()
 
         # Generate a unique filename.
-        output_file = AbinitFile._get_unique_filename(output_file)
+        output_file = get_unique_filename(output_file)
 
         with open(f"{output_file}.abi", "w") as outf:
-            # Write the header content
+            # Write header
             outf.write(header_content)
-            outf.write(
-                "\n#--------------------------\n# Definition of unit cell\n#--------------------------\n"
-            )
-            acell = self.vars.get("acell", self.structure.lattice.abc)
+            outf.write("\n#--------------------------\n"
+                    "# Definition of unit cell\n"
+                    "#--------------------------\n")
+
+            # Lattice parameters
+            acell = self.vars.get("acell", self.lattice.abc)
             outf.write(f"acell {' '.join(map(str, acell))}\n")
-            rprim = self.vars.get("rprim", self.structure.lattice.matrix.tolist())
+
+            rprim = self.vars.get("rprim", self.lattice.matrix.tolist())
             outf.write("rprim\n")
+            for row in rprim:
+                outf.write(f"  {'  '.join(map(str, row))}\n")
 
-            for coord in rprim:
-                outf.write(f"  {'  '.join(map(str, coord))}\n")
+            # Atomic coordinates
+            coord_key = self.vars['coord_type']
+            outf.write(f"{coord_key}\n")
+            coordinates = self.vars['coordinates']
+            for row in coordinates:
+                outf.write(f"  {'  '.join(map(str, row))}\n")
 
-            if coords_are_cartesian:
-                outf.write("xcart\n")
-                coordinates = self.vars["xcart"]
-                self._logger.info(f"Coordinates to be written: \n {coordinates} \n")
-
-                for coord in coordinates:
-                    outf.write(f"  {'  '.join(map(str, coord))}\n")
-
-            else:
-                outf.write("xred\n")
-                coordinates = self.vars["xred"]
-                for coord in coordinates:
-                    outf.write(f"  {'  '.join(map(str, coord))}\n")
-
-            outf.write(
-                "\n#--------------------------\n# Definition of atoms\n#--------------------------\n"
-            )
-            outf.write(f"natom {self.vars['natom']} \n")
-            outf.write(f"ntypat {self.vars['ntypat']} \n")
+            # Atomic information
+            outf.write("\n#--------------------------\n"
+                    "# Definition of atoms\n"
+                    "#--------------------------\n")
+            outf.write(f"natom {self.vars['natom']}\n")
+            outf.write(f"ntypat {self.vars['ntypat']}\n")
             outf.write(f"znucl {' '.join(map(str, self.vars['znucl']))}\n")
             outf.write(f"typat {' '.join(map(str, self.vars['typat']))}\n")
 
-            outf.write(
-                "\n#----------------------------------------\n# Definition of the planewave basis set\n#----------------------------------------\n"
-            )
-            outf.write(f"ecut {self.vars.get('ecut', 42)} \n")
-            if self.vars["ecutsm"] is not None:
-                outf.write(f"ecutsm {self.vars['ecutsm']} \n")
+            # Plane wave basis
+            outf.write("\n#----------------------------------------\n"
+                    "# Definition of the planewave basis set\n"
+                    "#----------------------------------------\n")
+            if self.vars.get("ecut") is not None:
+                outf.write(f"ecut {self.vars.get('ecut', "")}\n")
+            if self.vars.get("ecutsm") is not None:
+                outf.write(f"ecutsm {self.vars['ecutsm']}\n")
 
-            outf.write(
-                "\n#--------------------------\n# Definition of the k-point grid\n#--------------------------\n"
-            )
-            outf.write(f"nshiftk {self.vars.get('nshiftk', '1')} \n")
-            if self.vars.get("kptrlatt") is not None:
-                outf.write("kptrlatt \n")
-                for row in self.vars.get("kptrlatt"):
-                    outf.write(f"  {' '.join(map(str, row))} \n")
+            # K-point grid
+            outf.write("\n#--------------------------\n"
+                    "# Definition of the k-point grid\n"
+                    "#--------------------------\n")
+            kptrlatt = self.vars.get("kptrlatt")
+            if kptrlatt is not None:
+                outf.write("kptrlatt\n")
+                for row in kptrlatt:
+                    outf.write("  " + " ".join(map(str, row)) + "\n")
             elif self.vars.get("ngkpt") is not None:
-                outf.write(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))} \n")
-            outf.write(
-                f"shiftk {' '.join(map(str, self.vars.get('shiftk', '0.5 0.5 0.5')))} \n"
-            )
-            outf.write(f"nband {self.vars['nband']} \n")
+                outf.write(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))}\n")
+            outf.write(f"nshiftk {self.vars.get('nshiftk', 1)}\n")
+            shiftk = self.vars.get("shiftk", [[0.5, 0.5, 0.5]])
+            shiftk_arr = np.array(shiftk)
 
-            outf.write(
-                "\n#--------------------------\n# Definition of the SCF Procedure\n#--------------------------\n"
-            )
-            outf.write(f"nstep {self.vars.get('nstep', 9)} \n")
-            outf.write(f"diemac {self.vars.get('diemac', '1000000.0')} \n")
-            outf.write(f"ixc {self.vars['ixc']} \n")
-            outf.write(
-                f"{self.vars['conv_criteria']} {str(self.vars[self.vars['conv_criteria']])} \n"
-            )
-            # Use pseudopotential information parsed into self.vars.
+            outf.write("shiftk\n")
+            if shiftk_arr.ndim == 1:
+                outf.write("  " + " ".join(map(str, shiftk_arr.tolist())) + "\n")
+            else:
+                for row in shiftk_arr:
+                    outf.write("  " + " ".join(map(str, row.tolist())) + "\n")
+
+            outf.write(f"nband {self.vars['nband']}\n")
+
+            # SCF procedure
+            outf.write("\n#--------------------------\n"
+                    "# Definition of the SCF Procedure\n"
+                    "#--------------------------\n")
+            outf.write(f"nstep {self.vars.get('nstep', 9)}\n")
+            outf.write(f"diemac {self.vars.get('diemac', '1000000.0')}\n")
+            outf.write(f"ixc {self.vars['ixc']}\n")
+
+            conv_key = self.vars['conv_criteria']
+            outf.write(f"{conv_key} {self.vars[conv_key]}\n")
+
+            # Pseudopotentials
             pp_dir_path = PseudopotentialManager().folder_path
-            outf.write(f'\npp_dirpath "{pp_dir_path}" \n')
-            if len(pseudos) == 0:
+            outf.write(f'\npp_dirpath "{pp_dir_path}"\n')
+
+            if not pseudos:
                 pseudos = self.vars.get("pseudos", [])
-            concatenated_pseudos = ", ".join(pseudos).replace('"', "")
-            outf.write(f'pseudos "{concatenated_pseudos}"\n')
-            self._logger.info(
-                f"The Abinit file {output_file}.abi was created successfully!"
-            )
+            pseudo_str = ", ".join(pseudos).replace('"', "")
+            outf.write(f'pseudos "{pseudo_str}"\n')
 
-        return output_file
+            print(f"The Abinit file {output_file}.abi was created successfully!")
 
-    def run_abinit(
+        return f"{output_file}.abi"
+
+    def execute(
         self,
         input_file: str,
         slurm_obj: Optional[SlurmFile],
         *,
-        batch_name: Optional[str] = "abinit_job.sh",
+        batch_name: Optional[str] = None,
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        Run the Abinit simulation via batch submission or direct execution.
+        execute the Abinit simulation via batch submission or direct execution.
 
         If a SlurmFile is provided, a unique input data file and batch script are created,
         and the job is submitted. Otherwise, the Abinit command is executed directly with
         output redirected to the specified log file.
 
         Parameters:
-
             input_file (str): Base name for the Abinit input files.
             slurm_obj (Optional[SlurmFile]): Object for managing batch operations; if None, execute directly.
             batch_name (Optional[str], keyword-only): Custom name for the batch script.
@@ -215,15 +202,18 @@ class AbinitFile(AbinitUnitCell):
             extra_commands (Optional[str], keyword-only): Additional commands for the batch script.
 
         Returns:
-
             None
 
         Raises:
-
             Exception: If batch script creation or submission fails.
         """
         # Check input_file has .abi extension. If it does, get rid of it
         input_file = input_file.replace(".abi", "")
+        if batch_name is None:
+            batch_name = f"{input_file}_batch.sh"
+
+        if log_file is None:
+            log_file = f"{input_file}.log"
 
         content: str = f"""{input_file}.abi
 {input_file}.abo
@@ -233,8 +223,8 @@ class AbinitFile(AbinitUnitCell):
         """
         # We now require a SlurmFile object (self.slurm_obj) to handle batch script operations.
         if slurm_obj is not None:
-            file_path: str = f"{input_file}_abinit_input_data.txt"
-            file_path = AbinitFile._get_unique_filename(file_path)
+            file_path: str = f"{input_file}.files"
+            file_path = get_unique_filename(file_path)
             with open(file_path, "w") as file:
                 file.write(content)
             try:
@@ -246,32 +236,31 @@ class AbinitFile(AbinitUnitCell):
                     batch_name=batch_name,
                     extra_commands=extra_commands,
                 )
-                self._logger.info(f"Batch script created: {script_created}")
+                print(f"Batch script created: {script_created}")
                 slurm_obj.submit_job(script_created)
 
             except Exception as e:
-                self._logger.error(f"Failed to run abinit using the batch script: {e}")
-                raise  # or handle error as you wish
+                print(f"Failed to execute abinit using the batch script: {e}")
+                raise  
 
         else:
-            # If no SlurmFile object was provided, execute directly.
-            command: str = f"abinit {input_file} > {log_file}"
-            os.system(command)
-            self._logger.info(
-                f"Abinit executed directly. Output written to '{log_file}'."
-            )
+            # If no SlurmFile object was provided, execute directly using extra_commands feature
+            os.system(extra_commands)
+            print(f"Abinit executed directly. Output written to '{log_file}'.")
 
-        return input_file
+        return f"{input_file}.abi"
 
-    def run_piezo_calculation(
+    def execute_piezo_calculation(
         self,
-        slurm_obj: Optional[SlurmFile],
         *,
+        output_name: Optional[str] = None,
+        slurm_obj: Optional[SlurmFile] = None,
+        batch_name: Optional[str] = None,
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        Run a piezoelectricity calculation for the unit cell.
+        execute a piezoelectricity calculation for the unit cell.
 
         This function creates a custom Abinit input file with predefined settings for
         a piezoelectric calculation and then executes Abinit either via a batch job (if a
@@ -280,9 +269,9 @@ class AbinitFile(AbinitUnitCell):
 
         Parameters:
             slurm_obj (Optional[SlurmFile]):
-                An object for managing batch job submission; if None, the calculation is run directly.
+                An object for managing batch job submission; if None, the calculation is execute directly.
             log_file (Optional[str], keyword-only):
-                Path to the log file where output from the Abinit run is saved.
+                Path to the log file where output from the Abinit execute is saved.
             extra_commands (Optional[str], keyword-only):
                 Additional commands to be included in the batch script.
 
@@ -291,15 +280,18 @@ class AbinitFile(AbinitUnitCell):
         """
         content: str = TemplateManager().unload_special_template("_piezoelectric_script")
         working_directory: str = os.getcwd()
-        output_name = f"{self.file_name}_piezo.abi"
-        output_name = self._get_unique_filename(output_name)
+
+        # Preset name if user didn't choose one
+        if output_file is None:
+            output_name = f"{self.filename}_piezo.abi"
+            output_name = get_unique_filename(output_name)
+
         output_file: str = os.path.join(working_directory, output_name)
-        output_file = self._get_unique_filename(output_file)
-        batch_name: str = os.path.join(working_directory, f"{self.file_name}_bscript")
-        output_file = self.write_custom_abifile(
+        output_file = get_unique_filename(output_file)
+        output_file = self.write(
             output_file=output_file, content=content, coords_are_cartesian=False
         )
-        self.run_abinit(
+        self.execute(
             input_file=output_file,
             slurm_obj=slurm_obj,
             batch_name=batch_name,
@@ -309,15 +301,17 @@ class AbinitFile(AbinitUnitCell):
 
         return output_file
 
-    def run_flexo_calculation(
+    def execute_flexo_calculation(
         self,
-        slurm_obj: SlurmFile,
         *,
+        output_file: Optional[str] = None,
+        slurm_obj: Optional[SlurmFile],
+        batch_name: Optional[str] = None,
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        Run a flexoelectricity calculation for the unit cell.
+        execute a flexoelectricity calculation for the unit cell.
 
         This function generates a custom Abinit input file with settings for a flexoelectricity
         calculation and then executes the calculation via a batch job using the provided
@@ -338,15 +332,18 @@ class AbinitFile(AbinitUnitCell):
 
         content: str = TemplateManager().unload_special_template("_flexoelectric_script")
         working_directory: str = os.getcwd()
-        output_name = f"{self.file_name}_flexo.abi"
-        output_name = self._get_unique_filename(output_name)
+
+        # Generate file name if note specified 
+        if output_file is None:
+            output_name = f"{self.filename}_flexo.abi"
+            output_name = get_unique_filename(output_name)
+
         output_file: str = os.path.join(working_directory, output_name)
-        output_file = self._get_unique_filename(output_file)
-        batch_name: str = os.path.join(working_directory, f"{self.file_name}_bscript")
-        output_file = self.write_custom_abifile(
+        output_file = get_unique_filename(output_file)
+        output_file = self.write(
             output_file=output_file, content=content, coords_are_cartesian=False
         )
-        self.run_abinit(
+        self.execute(
             input_file=output_file,
             slurm_obj=slurm_obj,
             batch_name=batch_name,
@@ -356,15 +353,17 @@ class AbinitFile(AbinitUnitCell):
 
         return output_file
 
-    def run_energy_calculation(
+    def execute_energy_calculation(
         self,
-        slurm_obj: SlurmFile,
         *,
+        output_file: Optional[str] = None,
+        slurm_obj: Optional[SlurmFile],
+        batch_name: Optional[str] = None,
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        Run an energy calculation for the unit cell.
+        execute an energy calculation for the unit cell.
 
         This function generates a custom Abinit input file configured for an energy
         calculation and executes it via the provided SlurmFile for batch submission.
@@ -383,16 +382,18 @@ class AbinitFile(AbinitUnitCell):
 
         # Grab template for energy calculation
         content: str = TemplateManager().unload_special_template("_energy_script")
-
         working_directory: str = os.getcwd()
-        output_name = f"{self.file_name}_energy.abi"
-        output_name = self._get_unique_filename(output_name)
+
+        # Generate pre-made name 
+        if output_file is None:
+            output_name = f"{self.filename}_energy.abi"
+            output_name = get_unique_filename(output_name)
+
         output_file: str = os.path.join(working_directory, output_name)
-        batch_name: str = os.path.join(working_directory, f"{self.file_name}_bscript")
-        output_file = self.write_custom_abifile(
+        output_file = self.write(
             output_file=output_file, content=content, coords_are_cartesian=True
         )
-        self.run_abinit(
+        self.execute(
             input_file=output_file,
             slurm_obj=slurm_obj,
             batch_name=batch_name,
@@ -400,113 +401,8 @@ class AbinitFile(AbinitUnitCell):
             extra_commands=extra_commands,
         )
         return output_file
-
-    def run_anaddb_file(
-        self,
-        content: str = "",
-        files_content: str = "",
-        *,
-        ddb_file: str,
-        flexo: bool = False,
-        peizo: bool = False,
-    ) -> str:
-        """
-        Executes an anaddb calculation. Supports default manual mode and optional presets for flexoelectric or piezoelectric calculations.
-
-        Args:
-            ddb_file: Path to the DDB file.
-            content: Content to write into the .abi file (used if neither flexo nor peizo are True).
-            files_content: Content for the .files file (used if neither flexo nor peizo are True).
-            flexo: If True, runs a flexoelectric preset calculation.
-            peizo: If True, runs a piezoelectric preset calculation.
-
-        Returns:
-            str: Name of the output file produced.
-        """
-        if flexo:
-            content = """
-    ! anaddb calculation of flexoelectric tensor
-    flexoflag 1
-    """.strip()
-
-            files_content = f"""{self.file_name}_flexo_anaddb.abi
-    {self.file_name}_flexo_output
-    {ddb_file}
-    dummy1
-    dummy2
-    dummy3
-    dummy4
-    """.strip()
-
-            abi_path = f"{self.file_name}_flexo_anaddb.abi"
-            files_path = f"{self.file_name}_flexo_anaddb.files"
-            log_path = f"{self.file_name}_flexo_anaddb.log"
-            output_file = f"{self.file_name}_flexo_output"
-
-        elif peizo:
-            content = """
-    ! Input file for the anaddb code
-    elaflag 3
-    piezoflag 3
-    instrflag 1
-    """.strip()
-
-            files_content = f"""{self.file_name}_piezo_anaddb.abi
-    {self.file_name}_piezo_output
-    {ddb_file}
-    dummy1
-    dummy2
-    dummy3
-    """.strip()
-
-            abi_path = f"{self.file_name}_piezo_anaddb.abi"
-            files_path = f"{self.file_name}_piezo_anaddb.files"
-            log_path = f"{self.file_name}_piezo_anaddb.log"
-            output_file = f"{self.file_name}_piezo_output"
-
-        else:
-            if not content.strip() or not files_content.strip():
-                raise ValueError(
-                    "Must provide both `content` and `files_content` when not using flexo or peizo mode."
-                )
-
-            abi_path = f"{self.file_name}_anaddb.abi"
-            files_path = f"{self.file_name}_anaddb.files"
-            log_path = f"{self.file_name}_anaddb.log"
-            output_file = f"{self.file_name}_anaddb_output"
-
-        # Write files
-        with open(abi_path, "w") as abi_file:
-            abi_file.write(content)
-        with open(files_path, "w") as files_file:
-            files_file.write(files_content)
-
-        # Run the anaddb command
-        command = f"anaddb < {files_path} > {log_path}"
-        try:
-            subprocess.run(command, shell=True, check=True)
-            self._logger.info(f"Command executed successfully: {command}")
-        except subprocess.CalledProcessError as e:
-            self._logger.error(f"An error occurred while executing the command: {e}")
-
-        return output_file
-
-    def run_mrgddb(self, content):
-        """Run the mrgddb program"""
-        mrgddb_file = f"{self.file_name}_mrgddb.in"
-
-        with open(mrgddb_file, "w") as mrgddb_file:
-            mrgddb_file.write(content)
-
-        command = f"mrgddb < {mrgddb_file} > mrgddb_log"
-        try:
-            subprocess.run(command, shell=True, check=True)
-        except subprocess.CalledProcessError as e:
-            self._logger.error(f"An error occured while executing the command: {e}")
-
-        return mrgddb_file
-
-    def copy_abinit_file(self):
+    
+    def copy(self):
         """
         Creates a deep copy of the current AbinitFile instance.
 
@@ -515,29 +411,27 @@ class AbinitFile(AbinitUnitCell):
         """
         return copy.deepcopy(self)
 
+
     def __repr__(self):
 
         lines = []
         lines.append("#--------------------------")
         lines.append("# Definition of unit cell")
         lines.append("#--------------------------")
-        acell = self.vars.get("acell", self.structure.lattice.abc)
+        acell = self.vars.get("acell", self.lattice.abc)
         lines.append(f"acell {' '.join(map(str, acell))}")
-        rprim = self.vars.get("rprim", self.structure.lattice.matrix.tolist())
+        rprim = self.vars.get("rprim", self.lattice.matrix.tolist())
         lines.append("rprim")
         for coord in rprim:
             lines.append(f"  {'  '.join(map(str, coord))}")
         # Choose coordinate system: xcart if available; otherwise xred.
         if self.vars.get("xcart") is not None:
             lines.append("xcart")
-            coordinates = self.vars["xcart"]
-            for coord in coordinates:
-                lines.append(f"  {'  '.join(map(str, coord))}")
         else:
             lines.append("xred")
-            coordinates = self.vars.get("xred", [])
-            for coord in coordinates:
-                lines.append(f"  {'  '.join(map(str, coord))}")
+        coordinates = self.vars["coordinates"]
+        for coord in coordinates:
+            lines.append(f"  {'  '.join(map(str, coord))}")
         lines.append("")
         lines.append("#--------------------------")
         lines.append("# Definition of atoms")
@@ -557,18 +451,24 @@ class AbinitFile(AbinitUnitCell):
         lines.append("#--------------------------")
         lines.append("# Definition of the k-point grid")
         lines.append("#--------------------------")
-        lines.append(f"nshiftk {self.vars.get('nshiftk', '1')}")
         if self.vars.get("kptrlatt") is not None:
+            kptrlatt = self.vars["kptrlatt"]
             lines.append("kptrlatt")
-            for row in self.vars.get("kptrlatt"):
-                lines.append(f"  {' '.join(map(str, row))} \n")
+            for row in kptrlatt:
+                lines.append(f"  {'  '.join(map(str, row))}")
         elif self.vars.get("ngkpt") is not None:
             lines.append(f"ngkpt {' '.join(map(str, self.vars['ngkpt']))} \n")
         # Make sure to split shiftk if it's a string
-        shiftk = self.vars.get("shiftk", "0.5 0.5 0.5")
-        if isinstance(shiftk, str):
-            shiftk = shiftk.split()
-        lines.append(f"shiftk {' '.join(map(str, shiftk))}")
+        lines.append(f"nshiftk {self.vars.get('nshiftk', '1')}")
+        shiftk = self.vars.get("shiftk", [[0.5, 0.5, 0.5]])
+        shiftk_arr = np.array(shiftk)
+
+        lines.append("shiftk")
+        if shiftk_arr.ndim == 1:
+            lines.append("  " + "  ".join(map(str, shiftk_arr.tolist())))
+        else:
+            for row in shiftk_arr:
+                lines.append("  " + "  ".join(map(str, row.tolist())))
         lines.append(f"nband {self.vars.get('nband')}")
         lines.append("")
         lines.append("#--------------------------")
@@ -588,3 +488,4 @@ class AbinitFile(AbinitUnitCell):
         concatenated_pseudos = ", ".join(pseudo.replace('"', "") for pseudo in pseudos)
         lines.append(f'pseudos "{concatenated_pseudos}"')
         return "\n".join(lines)
+    
