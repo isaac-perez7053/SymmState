@@ -197,10 +197,10 @@ DISPLAY ISOTROPY
             ["dummy"] + 0 * 2 * ["Sc"] + 2 * 2 * ["V"] + 1 * 2 * ["Sn"]
         )  # has to be in order of iso input
 
-        # 1. write your iso input as before
-        self.write_isotropy_input(
-            "iInput.txt", parent_sg, irrep, direction, domain, abc, angles
-        )
+        # # 1. write your iso input as before
+        # self.write_isotropy_input(
+        #     "iInput.txt", parent_sg, irrep, direction, domain, abc, angles
+        # )
 
         # 2. extract the Wyckoff points
         wyck = self.extract_wyckoff_points("iInput.txt")

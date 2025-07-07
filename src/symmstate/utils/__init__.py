@@ -1,5 +1,5 @@
 """
-SymmState Utils Package
+SymmState Utils module
 
 This package provides various utility functions and classes to support symmstate,
 including error handling, file I/O operations, logging, and data parsing.

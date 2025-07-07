@@ -13,7 +13,7 @@ from symmstate.abinit import AbinitFile
 from symmstate.utils import SymmAdaptedBasis
 
 
-class SymmAdaptStruct:
+class PhonSymmify:
     """
     This class is responsible for annotating phonon dispersion curves with their
     respective symmetries and degeneracies

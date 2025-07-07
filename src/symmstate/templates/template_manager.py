@@ -1,32 +1,51 @@
 import os
 from typing import Dict, Optional
-from symmstate import SymmStateCore
 import json
-from symmstate.config.symm_state_settings import SymmStateSettings
 import shutil
 from pathlib import Path
 
+from symmstate.config import settings
+from symmstate import SymmStateCore
+
 
 class TemplateManager(SymmStateCore):
-    """Manages creation and tracking of Abinit template files"""
+    """
+    Manages creation, lookup, and maintenance of Abinit template files.
+
+    Attributes:
+        SPECIAL_FILE (str):
+            Name of the JSON file used to record “special” templates.
+        folder_path (str):
+            Filesystem directory under which all templates live.
+        logger (Optional[logging.Logger]):
+            Logger for diagnostic or debug messages.
+        template_registry (Dict[str, str]):
+            Maps template filenames (e.g. "run.abi") to their full paths.
+        special_templates (Dict[str, str]):
+            Maps user‐defined roles (e.g. "energy") to a template filename.
+    """
 
     SPECIAL_FILE = "special_templates.json"
 
-    def __init__(self, *, logger=None):
+    def __init__(self):
         """
-        This class will initialize automatically when running SymmState
+        Initialize the TemplateManager by loading existing and special templates.
+
+        Parameters:
+            None:
         """
-        self.folder_path = str(SymmStateSettings().TEMPLATES_DIR)
-
-        # TODO: Possibly fix the logger to use the global logger
-        self.logger = logger
-
+        self.folder_path = str(settings.TEMPLATES_DIR)
         self.template_registry = {}
         self.template_registry: Dict[str, str] = self._load_existing_templates()
         self.special_templates = self._load_special_templates()
 
     def _load_existing_templates(self):
-        """Load existing templates into registry on initialization"""
+        """
+        Scan the template directory and build the registry for all “.abi” files.
+
+        Returns:
+            Dict[str, str]: Mapping from each ".abi" filename to its absolute path.
+        """
         template_registry = {}
         if not os.path.exists(self.folder_path):
             return
@@ -38,8 +57,17 @@ class TemplateManager(SymmStateCore):
 
     def add_template(self, template_file: str) -> str:
         """
-        Add a template file to the template directory with validation.
-        Returns path to created template.
+        Copy a new .abi template into the registry, validating its name.
+
+        Parameters:
+            template_file (str):
+                Path to the source .abi file to add.
+
+        Returns:
+            str: Full path to the newly installed template in folder_path.
+
+        Raises:
+            FileExistsError: If a template with the same name already exists.
         """
         # Validate template name
         template_name = os.path.basename(template_file)
@@ -61,22 +89,55 @@ class TemplateManager(SymmStateCore):
         return output_path
 
     def template_exists(self, template_file: str) -> bool:
-        """Check if template exists in registry or filesystem"""
+        """
+        Check whether a template is already registered or on disk.
+
+        Parameters:
+            template_file (str):
+                Filename of the template to check (e.g. "run.abi").
+
+        Returns:
+            bool: True if the template exists in registry or filesystem.
+        """
         exists_in_registry = template_file in self.template_registry
         exists_in_fs = os.path.exists(os.path.join(self.folder_path, template_file))
         return exists_in_registry or exists_in_fs
 
     def get_template_path(self, template_file: str) -> Optional[str]:
-        """Get full path for a template by name"""
+        """
+        Retrieve the full path of a registered template.
+
+        Parameters:
+            template_file (str):
+                Filename of the template.
+
+        Returns:
+            Optional[str]: Full filesystem path or None if not found.
+        """
         return self.template_registry.get(template_file)
 
     def remove_template(self, template_file: str):
-        """Remove template from registry and filesystem"""
+        """
+        Delete a template from both registry and disk.
+
+        Parameters:
+            template_file (str):
+                Filename of the template to remove.
+
+        Raises:
+            KeyError: If the template is not registered.
+        """
         if template_file in self.template_registry:
             os.remove(self.template_registry[template_file])
             del self.template_registry[template_file]
 
     def _load_special_templates(self):
+        """
+        Load the JSON file of special templates into memory.
+
+        Returns:
+            Dict[str, str]: Mapping from role names to template filenames.
+        """
         path = os.path.join(self.folder_path, self.SPECIAL_FILE)
         if os.path.exists(path):
             with open(path) as f:
@@ -84,6 +145,16 @@ class TemplateManager(SymmStateCore):
         return {}
 
     def set_special_template(self, role: str, template_file: str):
+        """
+        Assign a template to a special role and persist the mapping.
+
+        Parameters:
+            role (str): Identifier for the special template (e.g. "dielectric").
+            template_file (str): Filename of an existing template.
+
+        Raises:
+            FileNotFoundError: If the named template_file does not exist.
+        """
         self.special_templates[role] = template_file
         with open(os.path.join(self.folder_path, self.SPECIAL_FILE), "w") as f:
             json.dump(self.special_templates, f, indent=2)
@@ -93,7 +164,13 @@ class TemplateManager(SymmStateCore):
 
     def unload_special_template(self, role: str) -> str:
         """
-        Load the contents of a special template (e.g., 'energy') and return as a multiline string.
+        Look up which template filename is assigned to a given role.
+
+        Parameters:
+            role (str): The special template role.
+
+        Returns:
+            Optional[str]: Filename of the special template or None if unset.
         """
         template_path = self.get_special_template_name(role)
         if template_path and os.path.exists(template_path):
@@ -103,7 +180,16 @@ class TemplateManager(SymmStateCore):
 
     def unload_template(self, template_file: str) -> str:
         """
-        Load the contents of a template file and return as a multiline string.
+        Load and return the contents of a role‐assigned special template.
+
+        Parameters:
+            role (str): The special template role to unload.
+
+        Returns:
+            str: The full file content as a string.
+
+        Raises:
+            FileNotFoundError: If no template is registered for that role or file is missing.
         """
         template_path = self.get_template_path(template_file)
         if template_path and os.path.exists(template_path):
@@ -113,7 +199,16 @@ class TemplateManager(SymmStateCore):
 
     def unload_special_template(self, role: str) -> str:
         """
-        Load the contents of a special template and return as a multiline string.
+        Load and return the contents of a standard template file.
+
+        Parameters:
+            template_file (str): Filename of the template to unload.
+
+        Returns:
+            str: The full file content as a string.
+
+        Raises:
+            FileNotFoundError: If the template is not registered or missing on disk.
         """
         template_name = str(self.get_special_template_name(role))
         template_path = self.get_template_path(template_name)
@@ -124,13 +219,25 @@ class TemplateManager(SymmStateCore):
 
     def is_special_template(self, template_file: str) -> bool:
         """
-        Check if a template file is a special template.
+        Determine if a given template is marked as “special.”
+
+        Parameters:
+            template_file (str): Filename of the template.
+
+        Returns:
+            bool: True if the file appears in special_templates values.
         """
         return template_file in self.special_templates.values()
 
     def delete_special_template(self, role: str):
         """
-        Delete a special template by its role.
+        Remove a special‐role assignment and update the JSON mapping.
+
+        Parameters:
+            role (str): The special template role to delete.
+
+        Raises:
+            KeyError: If the role is not present in special_templates.
         """
         if role in self.special_templates:
             del self.special_templates[role]

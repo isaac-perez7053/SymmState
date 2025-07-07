@@ -10,10 +10,15 @@ from symmstate.slurm import SlurmFile
 
 class Perturbations(FlpzCore):
     """
-    A class that facilitates the generation and analysis of perturbations in
-    an Abinit unit cell, enabling the calculation of energy, piezoelectric,
-    and flexoelectric properties.
+    Facilitates the generation and analysis of perturbations for an Abinit unit cell,
+    enabling calculation of energy, piezoelectric, and flexoelectric properties.
+
+    This class provides static methods to:
+      - Generate a series of perturbed structures over a range of amplitudes.
+      - Submit and wait for energy, piezoelectric, and flexoelectric calculations via SLURM.
+      - Parse and return results including energies, piezoelectric tensors, and flexoelectric tensors.
     """
+
 
     def __init__(self):
         """
@@ -30,9 +35,28 @@ class Perturbations(FlpzCore):
         perturbation: np.ndarray,
     ) -> Tuple[List[float], List[AbinitFile]]:
         """
-        Generates perturbed unit cells based on the given number of datapoints.
+        Generate a series of perturbed Abinit input structures.
+
+        The method linearly interpolates amplitudes between min_amp and max_amp over
+        num_datapoints, applies each amplitude to the provided perturbation vector,
+        and returns both the list of amplitudes and the resulting AbinitFile objects.
+
+        Parameters:
+            num_datapoints (int):
+                Number of perturbed structures to generate (>= 2).
+            abinit_file (AbinitFile):
+                Base AbinitFile instance to perturb.
+            min_amp (float):
+                Minimum perturbation amplitude.
+            max_amp (float):
+                Maximum perturbation amplitude.
+            perturbation (np.ndarray):
+                Cartesian perturbation vectors to apply to atomic coordinates.
+
         Returns:
-            list: A list of perturbed AbinitFile objects.
+            Tuple[List[float], List[AbinitFile]]: 
+                - list of amplitude values used.
+                - list of new AbinitFile objects with applied perturbations.
         """
 
         # Calculate the step size.
@@ -57,7 +81,21 @@ class Perturbations(FlpzCore):
         slurm_obj: SlurmFile,
     ) -> Tuple[List[str], List[float]]:
         """
-        Calculate the energy associated with a list of perturbed AbinitFiles
+        Submit and retrieve energy calculations for a set of perturbed structures.
+
+        Each AbinitFile in perturbations is submitted via SLURM to compute total energy.
+        The method waits for all jobs to finish, then parses .abo files for energies.
+
+        Parameters:
+            perturbations (List[AbinitFile]):
+                List of perturbed AbinitFile instances.
+            slurm_obj (SlurmFile):
+                SLURM helper used to submit jobs and poll for completion.
+
+        Returns:
+            Tuple[List[str], List[float]]:
+                - list of generated .abo filenames for each job.
+                - list of extracted energy values.
         """
         list_abo_files = []
         for i, obj in enumerate(perturbations):
@@ -84,8 +122,23 @@ class Perturbations(FlpzCore):
         perturbations: List[AbinitFile], slurm_obj: SlurmFile, sleep_time: int = 10
     ):
         """
-        Runs piezoelectric calculations for each perturbed object and stores the
-        energies and piezoelectric tensors (both clamped and relaxed) in self.results.
+        Run piezoelectric calculations and parse both piezoelectric tensors and energies.
+
+        Parameters:
+            perturbations (List[AbinitFile]):
+                List of perturbed AbinitFile instances.
+            slurm_obj (SlurmFile):
+                SLURM helper for job submission and monitoring.
+            sleep_time (int):
+                Seconds to wait after merging before parsing results.
+                Default is 10.
+
+        Returns:
+            Dict[str, List]:
+                Dictionary with keys:
+                  - 'energies': List of energy floats.
+                  - 'clamped_piezotensors': List of clamped piezo electric tensors.
+                  - 'relaxed_piezotensors': List of relaxed piezo electric tensors.
         """
         list_abo_files = []
         for i, obj in enumerate(perturbations):
@@ -174,8 +227,23 @@ instrflag 1
         perturbations: List[AbinitFile], slurm_obj: SlurmFile, sleep_time: int = 10
     ):
         """
-        Runs flexoelectric calculations for each perturbed object and stores the
-        energies, flexoelectric tensors, and piezoelectric tensors in self.results.
+        Run flexoelectric calculations, merge outputs, and parse energies, flexo, and piezo tensors.
+
+        Parameters:
+            perturbations (List[AbinitFile]):
+                Perturbed structures to analyze.
+            slurm_obj (SlurmFile):
+                SLURM interface for job management.
+            sleep_time (int):
+                Delay after merging before parsing. Default: 10 seconds.
+
+        Returns:
+            Dict[str, List]:
+                Dictionary with keys:
+                - 'energies': List of energy floats.
+                - 'flexotensors': List of flexoelectric tensors.
+                - 'clamped_piezotensors': List of clamped piezoelectric tensors.
+                - 'relaxed_piezotensors': List of relaxed piezoelectric tensors.
         """
 
         list_abo_files = []
