@@ -1,7 +1,8 @@
 import subprocess
 import time
 from typing import Optional
-from symmstate.slurm.slurm_header import SlurmHeader
+
+from symmstate.slurm import SlurmHeader
 from symmstate.utils import get_unique_filename
 
 
@@ -133,7 +134,6 @@ class SlurmFile:
             print(f"sbatch output: {output}")
 
             # Parse job ID
-            # Example: "Submitted batch job 123456"
             if "Submitted batch job" in output:
                 job_id = output.split()[-1]
                 self.running_jobs.append(job_id)
@@ -176,7 +176,7 @@ class SlurmFile:
                 ]
                 states = [
                     ln.split()[0] for ln in lines if ln
-                ]  # e.g. ['COMPLETED'] or ['RUNNING'] etc.
+                ] 
 
                 if not states:
                     # If sacct didn't find a record, try squeue as fallback
@@ -187,7 +187,6 @@ class SlurmFile:
                         timeout=10,
                     )
                     if str(job_id) in sq_result.stdout:
-                        # It's still running
                         all_finished = False
                     else:
                         # If it's not in squeue either, treat as completed or unknown
@@ -212,19 +211,30 @@ class SlurmFile:
 
         return all_finished and len(self.running_jobs) == 0
 
+
     def wait_for_jobs_to_finish(
         self, check_time: int = 60, check_once: bool = False
     ) -> None:
         """
-        Poll job statuses until all jobs are finished or monitoring is interrupted.
+        Poll job statuses until all jobs are finished, monitoring is interrupted,
+        or a single check is performed.
 
-        This function repeatedly checks the status of running jobs, pausing for 'check_time' seconds
-        between checks. If 'check_once' is True, it performs a single check (useful for testing).
-        The process continues until all tracked jobs have completed or the user interrupts via Ctrl+C.
+        This function repeatedly checks the status of running jobs, pausing for
+        'check_time' seconds between checks. If 'check_once' is True, it performs
+        a single check (useful for testing). The process continues until all
+        tracked jobs have completed.
+
+        If the user interrupts monitoring with Ctrl+C, all still-pending jobs
+        will be cancelled via 'scancel'.
 
         Parameters:
-            check_time (int): Time in seconds to wait between job status checks (default is 60).
-            check_once (bool): If True, perform only a single check instead of continuous polling.
+            check_time (int):
+                Time in seconds to wait between job status checks (default: 60).
+            check_once (bool):
+                If True, perform only one check instead of continuous polling.
+
+        Returns:
+            None:
         """
         print(f"Monitoring {len(self.running_jobs)} jobs...\n")
         try:
@@ -234,22 +244,33 @@ class SlurmFile:
             else:
                 total_time = 0
                 while not self.all_jobs_finished():
-                    msg = f"Jobs remaining: {len(self.running_jobs)} - waited for {total_time/60:.2f} minutes"
+                    msg = (
+                        f"Jobs remaining: {len(self.running_jobs)} - "
+                        f"waited for {total_time/60:.2f} minutes"
+                    )
                     print(f"\r{msg}", end="", flush=True)
                     time.sleep(check_time)
                     total_time += check_time
 
                 final_msg = f"All jobs finished after {total_time/60:.3f} minutes."
-                print()  # Move to next line in terminal
+                print()  # newline
                 print(final_msg)
 
         except KeyboardInterrupt:
-            # TODO: Cancel all running jobs if interrupted
-            print("\nJob monitoring interrupted by user!")
+            print("\nJob monitoring interrupted by user! Cancelling pending jobs...")
+            for job_id in list(self.running_jobs):
+                try:
+                    subprocess.run(f"scancel {job_id}", shell=True, check=True)
+                    print(f"Cancelled job {job_id}")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error cancelling job {job_id}: {e}")
+            # Clear the list so final reporting knows there are none left
+            self.running_jobs.clear()
+
         finally:
             if self.running_jobs:
                 print(
                     f"Warning: {len(self.running_jobs)} jobs still tracked after monitoring."
                 )
             else:
-                print("All jobs completed successfully!")
+                print("All jobs completed or cancelled successfully!")

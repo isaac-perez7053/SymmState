@@ -4,15 +4,20 @@ from collections import OrderedDict, defaultdict
 from itertools import groupby
 import warnings
 
-from pymatgen.symmetry.bandstructure import HighSymmKpath
-from symmstate.abinit import AbinitFile
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import plotly.graph_objects as go
+
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.symmetry.bandstructure import HighSymmKpath
+
+from symmstate.abinit import AbinitFile
 from symmstate.utils import SymmAdaptedBasis
 
 
 class SymmAdaptStruct:
-    """ """
+    """
+    This class is responsible for annotating phonon dispersion curves with their
+    respective symmetries and degeneracies
+    """
 
     def __init__(self, abi_file: AbinitFile, abi_eigs: str):
         # TODO: I just need all irreps, then run the smodes_calc to find the
@@ -219,7 +224,7 @@ class SymmAdaptStruct:
             self.abi_file.get_primitive_structure()
         )
 
-        # canonicalize into a defaultdict(set)
+        # put into a defaultdict(set)
         label_map = defaultdict(set)
         for q, lab in raw_map.items():
             q = np.array(q) % 1
@@ -230,7 +235,7 @@ class SymmAdaptStruct:
         sga = SpacegroupAnalyzer(self.abi_file)
         ops = sga.get_symmetry_operations(cartesian=False)
 
-        # apply every rotation to every base point
+        # apply every rotation to every base point and find equivalent points
         full_map = defaultdict(set)
         for q0, labs in label_map.items():
             q0 = np.array(q0)
@@ -250,7 +255,7 @@ class SymmAdaptStruct:
             abi_file: The AbinitStructure object with method `.get_primitive_structure()`.
 
         Returns:
-            A list of high-symmetry labels (e.g., ["Γ", "X", "W", ...]).
+            A list of high-symmetry labels
         """
         symm_path = []
         symm_qvec = []
@@ -259,7 +264,7 @@ class SymmAdaptStruct:
         for qvec, labels in label_map.items():
             qstr = f"({qvec[0]:.3f}, {qvec[1]:.3f}, {qvec[2]:.3f})"
             label_str = ", ".join(sorted(labels))
-            print(f"{qstr} → {label_str}")
+            print(f"{qstr} -> {label_str}")
 
         for phonon in self.phonons:
             qpoint = np.round(np.array(phonon[0]) % 1, 4)
@@ -280,8 +285,8 @@ class SymmAdaptStruct:
         # qpath_segs: list of legs, each leg is a list of 3-vectors
         List[List[float]],
         # (band_segs, disp_segs):
-        #   band_segs: list of legs -> list of modes → list of freqs
-        #   disp_segs: list of legs -> list of modes → list of displacements
+        #   band_segs: list of legs -> list of modes -> list of freqs
+        #   disp_segs: list of legs -> list of modes -> list of displacements
         Tuple[
             List[List[List[float]]],
             List[List[np.ndarray]],
@@ -326,7 +331,7 @@ class SymmAdaptStruct:
         hs_freqs.append(freqs[idx_path[0]].tolist())
         hs_disps.append(disps[idx_path[0]].tolist())
 
-        # now loop over legs
+        #  loop over legs
         for i_start, i_end in zip(idx_path, idx_path[1:]):
             step = 1 if i_end > i_start else -1
             seg_idx = np.arange(i_start, i_end + step, step)

@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import Union
+import importlib.util
 
 
 def safe_file_copy(src: Union[str, Path], dest_dir: Union[str, Path]) -> Path:
@@ -38,3 +39,9 @@ def get_unique_filename(base_name, directory=".") -> str:
 
         # Increment the counter
         counter += 1
+
+def find_package_path(package_name: str = "symmstate") -> str:
+    spec = importlib.util.find_spec(package_name)
+    if spec is None or spec.submodule_search_locations is None:
+        raise ImportError(f"Cannot find package {package_name}")
+    return spec.submodule_search_locations[0]

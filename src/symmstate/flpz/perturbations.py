@@ -195,7 +195,7 @@ instrflag 1
             ddb_files = [
                 f"{obj.filename}_flexo_{i}_gen_output_DS1_DDB",
                 f"{obj.filename}_flexo_{i}_gen_output_DS4_DDB",
-                f"{obj.filename}_flexo_{i}_gen_output_DS5_DDB"
+                f"{obj.filename}_flexo_{i}_gen_output_DS5_DDB",
             ]
 
             mrgddb_input = MrgddbFile.write(
@@ -214,7 +214,6 @@ instrflag 1
 
         # Ensure the mrgddb files are finished running
         time.sleep(sleep_time)
-
 
         # Creation and execution of anaddb files
         anaddb_files = []
@@ -254,15 +253,23 @@ flexoflag 1
         for i, obj in enumerate(perturbations):
             energy = DataParser.grab_energy(list_abo_files[i])
             flexotensor = DataParser.grab_flexo_tensor(anaddb_file=anaddb_files[i])
-            clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(anaddb_file=anaddb_files[i])
+            clamped_tensor, relaxed_tensor = DataParser.grab_piezo_tensor(
+                anaddb_file=anaddb_files[i]
+            )
             results["energies"].append(energy)
             results["flexotensors"].append(flexotensor)
             results["clamped_piezotensors"].append(clamped_tensor)
             results["relaxed_piezotensors"].append(relaxed_tensor)
-        
+
         return results
 
-    def record_data(abi_file: AbinitFile, datafile_name: str, results: Dict, perturbation: np.ndarray, list_amps: List):
+    def record_data(
+        abi_file: AbinitFile,
+        datafile_name: str,
+        results: Dict,
+        perturbation: np.ndarray,
+        list_amps: List,
+    ):
         """
         Writes a summary of the run to a file in the format expected by data-analysis.py.
         This function retrieves the relevant arrays from self.results, including
@@ -293,7 +300,7 @@ flexoflag 1
             flexo_tensors = results.get("flexotensors", [])
 
             # Piezo data (clamped, relaxed)
-            clamped_tensors =  results.get("clamped_piezotensors", [])
+            clamped_tensors = results.get("clamped_piezotensors", [])
             relaxed_tensors = results.get("relaxed_piezotensors", [])
 
             # Required lines for data-analysis.py
@@ -321,4 +328,3 @@ flexoflag 1
                 for row in tensor:
                     row_str = " ".join(str(x) for x in row)
                     f.write(f"[ {row_str} ]\n")
-

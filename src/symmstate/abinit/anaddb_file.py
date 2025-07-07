@@ -1,5 +1,6 @@
 import os
 import subprocess
+
 from symmstate.utils import get_unique_filename
 
 
@@ -23,32 +24,34 @@ class AnaddbFile:
         ep: str = "anaddb.ep",
         ddk: str = "ddk",
         files_name: str = "anaddb.files",
-    ) -> None:
+    ) -> str:
         """
         Write both the anaddb.in and anaddb.files files.
 
-        Parameters
-        ----------
-        in_content : str
-            Content to write to the anaddb.in file.
-        anaddb_in : str
-            Name of the anaddb.in file.
-        directory : str, optional
-            Directory in which to write the files, by default "."
-        out_name : str, optional
-            Name of the output file, by default "anaddb.out"
-        ddb : str, optional
-            Name of the ddb file, by default "ddb"
-        band_eps : str, optional
-            Name of the band_eps file, by default "band_eps"
-        gkk : str, optional
-            Name of the gkk file, by default "gkk"
-        ep : str, optional
-            Name of the anaddb.ep file, by default "anaddb.ep"
-        ddk : str, optional
-            Name of the ddk file, by default "ddk"
-        files_name : str, optional
-            Name of the anaddb.files file, by default "anaddb.files"
+        Parameters:
+            in_content (str):
+                Content to write to the anaddb.in file.
+            anaddb_in (str):
+                Name of the anaddb.in file.
+            directory (Optional[str]):
+                Directory in which to write the files, by default "."
+            out_name (Optional[str]):
+                Name of the output file, by default "anaddb.out"
+            ddb (Optional[str]):
+                Name of the ddb file, by default "ddb"
+            band_eps (Optional[str]):
+                Name of the band_eps file, by default "band_eps"
+            gkk (Optional[str]):
+                Name of the gkk file, by default "gkk"
+            ep (Optional[str]):
+                Name of the anaddb.ep file, by default "anaddb.ep"
+            ddk (Optional[str]):
+                Name of the ddk file, by default "ddk"
+            files_name (Optional[str]):
+                Name of the anaddb.files file, by default "anaddb.files"
+
+        Returns:
+            str: The unique name of the output file
         """
         out_name = get_unique_filename(out_name)
 
@@ -95,16 +98,18 @@ class AnaddbFile:
         """
         Execute the anaddb utility using the specified files and log.
 
-        Parameters
-        ----------
-        files_name : str, optional
-            Name of the anaddb.files file to read, by default "anaddb.files"
-        log_name : str, optional
-            Name of the log file to write, by default "anaddb.log"
-        directory : str, optional
-            Directory containing the files, by default "."
-        background : bool, optional
-            If True, run the command in the background, by default False
+        Parameters:
+            files_name (str):
+                Name of the anaddb.files file to read, by default "anaddb.files"
+            log_name (Optional[str]):
+                Name of the log file to write, by default "anaddb.log"
+            directory (Optional[str]):
+                Directory containing the files, by default "."
+            background (Optional[bool]):
+                If True, run the command in the background, by default False
+
+        Returns:
+            None
         """
         files_path = os.path.join(directory, files_name)
         log_path = os.path.join(directory, log_name)

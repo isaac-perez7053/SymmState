@@ -1,7 +1,6 @@
 from symmstate.abinit import AbinitFile
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import numpy as np
-import sys
 from typing import Dict, Any
 import re
 from collections import defaultdict

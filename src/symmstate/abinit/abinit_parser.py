@@ -1,18 +1,28 @@
-"""
-This class serves as the parsing and checking of valid Abinit variables
-"""
-
 from typing import Dict
-from symmstate.utils import DataParser
 import numpy as np
+
+from symmstate.utils import DataParser
 
 
 class AbinitParser:
     """Parser for Abinit input files"""
 
+    def __init__(self):
+        pass
+
     @staticmethod
     def parse_abinit_file(file_path: str) -> Dict:
-        """Parse all parameters from Abinit file"""
+        """
+        Parse all parameters from Abinit file
+
+        Parameters:
+            file_path (str): A string that represents the abinit
+                input file
+
+        Returns:
+            Dict: Dictionary containing all extract Abinit input variables
+        """
+
         with open(file_path, "r") as f:
             content = f.read()
 
@@ -83,7 +93,15 @@ class AbinitParser:
 
     @staticmethod
     def check(parsed_data: Dict) -> None:
-        """Check if the parsed data is valid"""
+        """
+        Check if the parsed data is valid
+
+        Parameters:
+            parsed_data (Dict): The dictionary containing the extracted variables
+
+        Returns:
+            None:
+        """
 
         if (parsed_data["ngkpt"] is not None) and (parsed_data["kptrlatt"] is not None):
             raise ValueError("ngkpt and kptrlatt cannot both be defined")
@@ -171,7 +189,15 @@ class AbinitParser:
 
     @staticmethod
     def is_supported(key: str) -> bool:
-        """Check if a variable is supported by the parser"""
+        """
+        Check if a variable is supported by the parser
+
+        Parameters:
+            key (str): The queried key
+
+        Returns:
+            bool: true if supported and false otherwise
+        """
         return key in AbinitParser.abinit_variable_descriptions()
 
     def __str__(self):

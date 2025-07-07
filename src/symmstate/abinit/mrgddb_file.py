@@ -1,12 +1,9 @@
-"""
-This class is used to interact the mrgddb utility part of Abinit
-"""
-
 import os
 import subprocess
-from symmstate.utils import get_unique_filename
 from typing import List
 import time
+
+from symmstate.utils import get_unique_filename
 
 
 class MrgddbFile:
@@ -25,8 +22,24 @@ class MrgddbFile:
         description: str = None,
     ) -> str:
         """
-        Write the mrgddb.in file with the list of DDB files and output DDB name.
+        Write the mrgddb.in file with the list of DDB files and the output DDB filename.
+
+        Parameters:
+            input_name (str):
+                Base name for the mrgddb input file to create. A unique filename will be generated.
+            ddb_files (List[str]):
+                List of paths to the DDB files to be merged.
+            output_file (Optional[str]):
+                Desired base name for the merged DDB output file. A unique filename will be generated.
+                Defaults to "out.ddb".
+            description (Optional[str]):
+                Description to include in the mrgddb.in file header.
+                Defaults to "Description".
+
+        Returns:
+            str: The unique name of the merged DDB output file.
         """
+
         input_name = get_unique_filename(input_name)
         output_file = get_unique_filename(output_file)
         lines = [output_file]
@@ -42,7 +55,18 @@ class MrgddbFile:
     @staticmethod
     def execute(input_file: str, log_name: str = "mrgddb.log", sleep_time=10):
         """
-        Run the mrgddb utility.
+        Run the mrgddb utility using the specified input file and capture its output in a log file.
+
+        Parameters:
+            input_file (str):
+                Path to the mrgddb input file.
+            log_name (Optional[str]):
+                Filename for capturing mrgddb’s stdout/stderr. Defaults to "mrgddb.log".
+            sleep_time (Optional[int]):
+                Number of seconds to pause after execution completes. Defaults to 10.
+
+        Returns:
+            None:
         """
         command = f"mrgddb < {input_file} > {log_name}"
         try:

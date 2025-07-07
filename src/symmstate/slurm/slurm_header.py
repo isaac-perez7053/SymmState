@@ -7,10 +7,29 @@ class SlurmHeader:
     """
     Container for SLURM '#SBATCH' directive settings.
 
-    Each non-empty field in this dataclass generates a corresponding '#SBATCH' line for batch
-    script headers. Additional custom directives can be specified via the 'additional_lines' list.
-    """
+    Each non-empty field in this dataclass generates a corresponding '#SBATCH' line in a job
+    submission script. Use 'additional_lines' to include any custom directives not covered by
+    the predefined attributes.
 
+    Attributes:
+        job_name (Optional[str]):
+            Name of the job (--job-name).
+        partition (Optional[str]):
+            Partition or queue to submit the job to (--partition).
+        ntasks (Optional[int]):
+            Total number of MPI tasks (--ntasks).
+        cpus_per_task (Optional[int]):
+            Number of CPU cores per task (--cpus-per-task).
+        time (Optional[str]):
+            Maximum runtime in the format 'D-HH:MM:SS' or 'HH:MM:SS' (--time).
+        output (Optional[str]):
+            Path or pattern for the STDOUT file (--output), e.g., 'slurm-%j.out'.
+        error (Optional[str]):
+            Path or pattern for the STDERR file (--error), e.g., 'slurm-%j.err'.
+        additional_lines (List[str]):
+            List of extra '#SBATCH' directive lines, e.g., ['#SBATCH --mem=4G',
+            '#SBATCH --mail-type=END'].
+    """
     job_name: Optional[str] = None
     partition: Optional[str] = None
     ntasks: Optional[int] = None

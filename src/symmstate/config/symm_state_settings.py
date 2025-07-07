@@ -1,14 +1,7 @@
 import json
 from pathlib import Path
-import importlib.util
 
-
-def find_package_path(package_name: str = "symmstate") -> str:
-    spec = importlib.util.find_spec(package_name)
-    if spec is None or spec.submodule_search_locations is None:
-        raise ImportError(f"Cannot find package {package_name}")
-    return spec.submodule_search_locations[0]
-
+from symmstate.utils import find_package_path
 
 class SymmStateSettings:
     """Handles SymmState configuration settings"""
@@ -39,6 +32,7 @@ class SymmStateSettings:
             self.save_settings()
 
     def load_settings(self):
+        """Load the pre-existing settings from a json file"""
         # Start with defaults
         data = self.DEFAULTS.copy()
         # If settings file exists, update with its values
@@ -57,6 +51,7 @@ class SymmStateSettings:
         self.TEST_DIR = data["TEST_DIR"]
 
     def save_settings(self):
+        """Saves the settings to a json file within the package"""
         data = {
             "PP_DIR": str(self.PP_DIR),
             "TEMPLATES_DIR": str(self.TEMPLATES_DIR),

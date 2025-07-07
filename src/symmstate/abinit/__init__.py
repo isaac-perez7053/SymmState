@@ -1,3 +1,7 @@
+"""
+This module contains all classes related to Abinit and any associated utilities
+"""
+
 from symmstate.abinit.abinit_structure import AbinitStructure
 from symmstate.abinit.abinit_file import AbinitFile
 from symmstate.abinit.abinit_parser import AbinitParser

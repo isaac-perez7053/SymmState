@@ -1,11 +1,12 @@
 import os
 import copy
 import numpy as np
-from symmstate.abinit.abinit_structure import AbinitStructure
-from symmstate.pseudopotentials.pseudopotential_manager import PseudopotentialManager
+from typing import Optional, List, Dict
+
+from symmstate.abinit import AbinitStructure
+from symmstate.pseudopotentials import PseudopotentialManager
 from symmstate.templates import TemplateManager
 from symmstate.utils import get_unique_filename
-from typing import Optional, List, Dict
 from symmstate.slurm import SlurmFile
 
 
@@ -16,11 +17,8 @@ class AbinitFile(AbinitStructure):
     This class extends AbinitUnitCell to provide:
       - Creation and management of .abi files.
       - Execution of Abinit jobs either via SLURM batch submission or direct OS calls.
-      - Support for symmetry-adapted modes basis through smodes_input and target_irrep.
-      - Integrated logging and explicit type handling.
 
-    The AbinitFile can be initialized using an existing .abi file, a Structure object, or
-    symmetry-adapted input parameters.
+    The AbinitFile can be initialized using an existing .abi file or dictionary
     """
 
     def __init__(
@@ -35,6 +33,8 @@ class AbinitFile(AbinitStructure):
                 Path to an existing Abinit file. If provided, the file name (without .abi extension)
                 is used for further processing.
 
+        Returns:
+            AbinitFile:
         """
         # Initialize AbinitUnitCell with supported parameters.
         obj = AbinitStructure.from_file(abi_file)
@@ -46,6 +46,14 @@ class AbinitFile(AbinitStructure):
     def from_dict(cls, dict: Dict, filename: str) -> "AbinitFile":
         """
         Initialize from a dictionary and filename.
+
+        Parameters:
+            dict (Dict): Dictionary containing Abinit variables
+            filename (str): Basename ofAbinit files
+        
+        Returns:
+            AbinitFile:
+
         """
         obj = cls(dict)
         obj.filename = filename
@@ -69,7 +77,7 @@ class AbinitFile(AbinitStructure):
             output_file (str):
                 Base filename for the output file; a unique name is generated.
             content (str):
-                Header content as a literal string or a file path to be read.
+                Header content as a literal string
             pseudos (List, optional):
                 List of pseudopotential identifiers; if empty, defaults to those in self.vars.
 
@@ -181,14 +189,14 @@ class AbinitFile(AbinitStructure):
     def execute(
         self,
         input_file: str,
-        slurm_obj: Optional[SlurmFile],
+        slurm_obj: Optional[SlurmFile] = None,
         *,
         batch_name: Optional[str] = None,
         log_file: Optional[str] = None,
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        execute the Abinit simulation via batch submission or direct execution.
+        Execute the Abinit simulation via batch submission or direct execution.
 
         If a SlurmFile is provided, a unique input data file and batch script are created,
         and the job is submitted. Otherwise, the Abinit command is executed directly with
@@ -200,9 +208,10 @@ class AbinitFile(AbinitStructure):
             batch_name (Optional[str], keyword-only): Custom name for the batch script.
             log_file (Optional[str], keyword-only): Path to the log file.
             extra_commands (Optional[str], keyword-only): Additional commands for the batch script.
+                If a batch script is not provided, the extra command can be used to customize the os call
 
         Returns:
-            None
+            None:
 
         Raises:
             Exception: If batch script creation or submission fails.
@@ -260,16 +269,22 @@ class AbinitFile(AbinitStructure):
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        execute a piezoelectricity calculation for the unit cell.
+        Execute a piezoelectricity calculation for the unit cell.
 
         This function creates a custom Abinit input file with predefined settings for
         a piezoelectric calculation and then executes Abinit either via a batch job (if a
         SlurmFile is provided) or directly. The function returns the base name of the
         generated output file.
 
+        Note that the predefined piezoelectric script can be edited via the template manager
+
         Parameters:
-            slurm_obj (Optional[SlurmFile]):
+            output_name (Optional[str], keyword-only):    
+                Name of the piezoelectricity file to be executed
+            slurm_obj (Optional[SlurmFile], keyword-only):
                 An object for managing batch job submission; if None, the calculation is execute directly.
+            batch_name (Optional[str], keyword-only):
+                The name of the batch script to be created
             log_file (Optional[str], keyword-only):
                 Path to the log file where output from the Abinit execute is saved.
             extra_commands (Optional[str], keyword-only):
@@ -311,19 +326,25 @@ class AbinitFile(AbinitStructure):
         extra_commands: Optional[str] = None,
     ) -> str:
         """
-        execute a flexoelectricity calculation for the unit cell.
+        Execute a flexoelectricity calculation for the unit cell.
 
         This function generates a custom Abinit input file with settings for a flexoelectricity
         calculation and then executes the calculation via a batch job using the provided
         SlurmFile object.
 
+        Note that the predefined flexoelectric script can be edited via the template manager
+
         Parameters:
-            slurm_obj (SlurmFile):
-                An object to manage batch submission and related operations.
+            output_name (Optional[str], keyword-only):    
+                Name of the piezoelectricity file to be executed
+            slurm_obj (Optional[SlurmFile], keyword-only):
+                An object for managing batch job submission; if None, the calculation is execute directly.
+            batch_name (Optional[str], keyword-only):
+                The name of the batch script to be created
             log_file (Optional[str], keyword-only):
-                Path to the file where the calculation log will be stored.
+                Path to the log file where output from the Abinit execute is saved.
             extra_commands (Optional[str], keyword-only):
-                Additional commands to include in the batch script.
+                Additional commands to be included in the batch script.
 
         Returns:
             str: The base name of the generated output file (without extension).
@@ -368,13 +389,19 @@ class AbinitFile(AbinitStructure):
         This function generates a custom Abinit input file configured for an energy
         calculation and executes it via the provided SlurmFile for batch submission.
 
+        Note that the predefined energy script can be edited via the template manager
+
         Parameters:
-            slurm_obj (SlurmFile):
-                Object used for batch job submission.
+            output_name (Optional[str], keyword-only):    
+                Name of the piezoelectricity file to be executed
+            slurm_obj (Optional[SlurmFile], keyword-only):
+                An object for managing batch job submission; if None, the calculation is execute directly.
+            batch_name (Optional[str], keyword-only):
+                The name of the batch script to be created
             log_file (Optional[str], keyword-only):
-                Path to the log file to capture output.
+                Path to the log file where output from the Abinit execute is saved.
             extra_commands (Optional[str], keyword-only):
-                Additional commands to include in the batch script.
+                Additional commands to be included in the batch script.
 
         Returns:
             str: The base name of the generated output file.

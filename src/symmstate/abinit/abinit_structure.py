@@ -1,10 +1,3 @@
-"""
-Abinit Structure module.
-
-This module implements the AbinitStructure class, which extends pymatgen's Structure class with Abinit-specific functionality.
-It stores and manages parameters parsed from an Abinit file or derived from a Structure object.
-"""
-
 from typing import List, Tuple, Dict
 import os
 import copy
@@ -15,7 +8,7 @@ from collections import Counter
 from pymatgen.core import Structure, Element, Lattice
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from symmstate.abinit.abinit_parser import AbinitParser
+from symmstate.abinit import AbinitParser
 from symmstate.utils.misc import Misc
 from symmstate.pseudopotentials import PseudopotentialManager
 
@@ -37,9 +30,15 @@ class AbinitStructure(Structure):
          to initialize the parent UnitCell and update the unit cell parameters accordingly.
     """
 
-    def __init__(self, vars: Dict):
+    def __init__(self, vars: Dict) -> "AbinitStructure":
         """
         Initialize from a dictionary of Abinit variables.
+
+        Parameters:
+            vars (Dict): Dictionary containing all necessary Abinit variables
+
+        Returns:
+            AbinitStructure:
         """
         self.vars = vars
         AbinitParser.check(vars)
@@ -58,6 +57,12 @@ class AbinitStructure(Structure):
     def from_file(cls, abi_file: str) -> "AbinitStructure":
         """
         Initialize from an Abinit input file.
+
+        Parameters:
+            abi_file (str): Filepath to Abinit input file
+
+        Returns:
+            AbinitStructure:
         """
         if not os.path.exists(abi_file):
             raise FileNotFoundError(f"The file {abi_file} does not exist!")
@@ -206,7 +211,16 @@ class AbinitStructure(Structure):
         return AbinitStructure(new_vars)
 
     def _convert_znucl_typat(self) -> List[str]:
-        """Convert znucl/typat to element symbols."""
+        """
+        Convert znucl/typat to element symbols.
+
+        Parameters:
+            None:
+
+        Returns:
+            List[str]: List of element symbols in order of typat
+
+        """
         if "znucl" not in self.vars or "typat" not in self.vars:
             raise ValueError("Missing znucl or typat in Abinit file")
 
@@ -218,6 +232,12 @@ class AbinitStructure(Structure):
         """
         Return a list of the unique elements of the system in the order maintained
         by the variable name typat
+
+        Parameters:
+            None:
+
+        Returns:
+            List[str]: List of element symbols in order of typat and are unique
         """
 
         znucl = self.vars["znucl"]
@@ -228,6 +248,13 @@ class AbinitStructure(Structure):
         """
         Return a list containing the number of each element where the
         order is specified by the typat variable
+
+        Parameters:
+            None:
+
+        Returns:
+            List[int]: List containing multiplicity of each element in order of typat
+
         """
         mult_typat = Counter(self.vars["typat"])
         return [count for _, count in mult_typat.items()]
